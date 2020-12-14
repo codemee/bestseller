@@ -48,8 +48,10 @@ for i in range(12):                          # 從前一個月開始往回爬 12
             rank = 0
             if span is not None:
                 rank = int(span.text)                                   # 取得名次數值
+            priceStr = book.find('div').text_content()
+            price = priceStr[priceStr.rfind("$"):priceStr.rfind("\n")]
             if isbn not in data:                                        # 若是未曾出現過的書
-                data[isbn] = {'title':title, 'score':0, 'months':0}     # 新增此書基本資料
+                data[isbn] = {'title':title, 'score':0, 'months':0, 'price':price}     # 新增此書基本資料
             data[isbn]['score'] += (121 - rank)                         # 累計分數, 名次 1 得 120 分, 120 名得 1 分
             data[isbn]['months'] += 1                                   # 累計上榜月數
             # print(rank, isbn, title)
@@ -58,4 +60,4 @@ score_order = sorted(data.items(), key=lambda x:x[1]['score'], reverse=True) # �
 
 for item in score_order:
     # print(item)
-    print("{:4d} ({:2d}) {:s}".format(item[1]['score'], item[1]['months'], item[1]['title']))  # 顯示每一本書的資料
+    print("{:4d} ({:2d}) {:s} {:s}".format(item[1]['score'], item[1]['months'], item[1]['title'], item[1]['price']))  # 顯示每一本書的資料
