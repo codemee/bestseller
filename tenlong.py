@@ -16,7 +16,7 @@ for i in range(12):                          # 從前一個月開始往回爬 12
     https://www.tenlong.com.tw/tw/bestselling?date=2020-11-07
     '''
     for page_no in range(1, 5):              # 天瓏排行版共 4 頁
-        url = "https://www.tenlong.com.tw/tw/bestselling?date={:04d}-{:02d}-07&page={:d}".format(yyyy, mm, page_no)
+        url = "https://www.tenlong.com.tw/tw/bestselling?date={:04d}-{:02d}-28&page={:d}".format(yyyy, mm, page_no)
         # print(url)
         page = pq(url)                       # 取得排行版 HTML 內容
         books = page(".single-book")         # 排行榜上每一本書是一個 single-book 類別的元素
