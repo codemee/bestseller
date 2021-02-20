@@ -13,10 +13,10 @@ headers = {
     'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0'
     }
 '''
-博客來即時榜網址
-https://www.books.com.tw/web/sys_tdrntb/books/
+博客來電腦資訊圖書 30 天排行榜
+https://www.books.com.tw/web/sys_saletopb/books/19/?loc=P_0002_021
 '''
-url = 'https://www.books.com.tw/web/sys_tdrntb/books/'
+url = 'https://www.books.com.tw/web/sys_saletopb/books/19/?loc=P_0002_021'
 page = pq(url, headers=headers)                       # 取得排行版 HTML 內容
 books = page(".type02_bd-a h4 a")         # 排行榜上每一本書是一個 single-book 類別的元素
 rank = 1
@@ -47,43 +47,9 @@ for book in books:                   # 處理每一本書
     title = book.text       # 取得書名
     url = book.attrib['href']      # 取得單品頁連結
     url = url[:url.find('?')] if url.find('?') else url
-    print(url)
-    done =False
-    while not done:
-        try:
-            time.sleep(random.randint(10,30))
-            detailPage = pq(url, headers=headers)             # 取得單品頁
-            '''
-            單品頁詳細資料格式：
-            <h3>詳細資料</h3>
-            <div class="bd">
-                <ul>
-                    <li>ISBN：9789869739061</li>
-                    <li>叢書系列：<a
-                            href='https://www.books.com.tw/web/sys_puballb/books/?se=%E5%89%B5%E5%AF%8C%E7%B3%BB%E5%88%97&pubid=berich3'>創富系列</a>
-                    </li>
-                    <li>規格：平裝 / 236頁 / 17 x 23 x 1.18 cm / 普通級 / 雙色印刷 / 初版</li>
-                    <li>出版地：台灣 </li>
-                </ul>
-                <ul class="sort">
-                    <li>本書分類：<a href='https://www.books.com.tw/web/books_topm_02/'>商業理財</a>&gt; <a
-                            href='https://www.books.com.tw/web/books_bmidm_0209/'>投資理財</a>&gt; <a
-                            href='https://www.books.com.tw/web/sys_bbotm/books/020903/'>股票／證券</a></li>
-                </ul>
-            </div>
-            '''
-            data = detailPage('.bd li')      # 取得詳細資料
-            isbn = data[0].text[5:]
-            if isbn:
-                print("{:3d} {:s} {:s}".format(rank, isbn, title))
-                done = True
-        except ex:
-            print(str(ex))
-            pass
-        if not done:
-            print('retry...')  
-            time.sleep(random.randint(60, 80))       # 博客來有防爬蟲, 間隔 10 秒存取才不會被強制斷線
-    rank = rank + 1
+    book_id = url[url.rfind("/") + 1:]
+    print("{:03d}\t{}\t{}".format(rank, book_id, title))
+    rank += 1
 
 
 
