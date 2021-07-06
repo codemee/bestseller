@@ -1,13 +1,24 @@
 from pyquery import PyQuery as pq
+import argparse
 import time
 
 datetime = time.localtime(time.time()) # 取得今天日期
-yyyy = datetime.tm_year                # 取得西洋年份
-mm = datetime.tm_mon                   # 取得月份
+this_year = datetime.tm_year                # 取得西洋年份
+this_month = datetime.tm_mon                   # 取得月份
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-y', '--year', help="年份", type=int, default=this_year)
+parser.add_argument('-m', '--month', help="年份", type=int, default=this_month)
+parser.add_argument('-p', '--period', help="年份", type=int, default=12)
+parser.add_argument('-f', '--file', help="存檔", action='store_true')
+arg = parser.parse_args()
+
+yyyy = arg.year                # 取得西洋年份
+mm = arg.month                   # 取得月份
 
 data = {}                              # 存放排行榜資料的字典
 
-for i in range(12):                          # 從前一個月開始往回爬 12 個月得資料
+for i in range(arg.period):                          # 從前一個月開始往回爬 12 個月得資料
     mm = 12 if mm == 1 else (mm - 1)         # 跨年時回到 12 月
     yyyy = (yyyy - 1) if mm == 12 else yyyy  # 跨年時調整西洋年份
 
@@ -49,7 +60,9 @@ for i in range(12):                          # 從前一個月開始往回爬 12
             if span is not None:
                 rank = int(span.text)                                   # 取得名次數值
             priceStr = book.find('div').text_content()
-            price = priceStr[priceStr.rfind("$"):priceStr.rfind("\n")]
+            price_start = priceStr.rfind("$")
+            price_end = priceStr.find("\n", price_start)
+            price = priceStr[price_start:price_end]
             if isbn not in data:                                        # 若是未曾出現過的書
                 data[isbn] = {'title':title, 'score':0, 'months':0, 'price':price}     # 新增此書基本資料
             data[isbn]['score'] += (121 - rank)                         # 累計分數, 名次 1 得 120 分, 120 名得 1 分
@@ -58,6 +71,29 @@ for i in range(12):                          # 從前一個月開始往回爬 12
 
 score_order = sorted(data.items(), key=lambda x:x[1]['score'], reverse=True) # 依據分數從高到低排序
 
-for item in score_order:
-    # print(item)
-    print("{:4d} ({:2d}) {:s} {:s}".format(item[1]['score'], item[1]['months'], item[1]['title'], item[1]['price']))  # 顯示每一本書的資料
+total = 1
+
+if arg.file:
+    f_name = "s_{:04d}_{:02d}_plus_{:02d}.txt".format(
+        yyyy,
+        mm,
+        arg.period
+    )
+    with open(f_name, 'w', encoding='UTF8') as f:
+        for item in score_order:
+            f.write("[{:03d}]{:4d} ({:2d}) {:s} {:s}\n".format( # 顯示每一本書的資料
+                total, 
+                item[1]['score'], 
+                item[1]['months'], 
+                item[1]['title'], 
+                item[1]['price']))
+            total = total + 1
+else:
+    for item in score_order:
+        print("[{:03d}]{:4d} ({:2d}) {:s} {:s}".format( # 顯示每一本書的資料
+            total, 
+            item[1]['score'], 
+            item[1]['months'], 
+            item[1]['title'], 
+            item[1]['price']))
+        total = total + 1
