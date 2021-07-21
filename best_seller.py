@@ -151,26 +151,27 @@ def go_books(book):
         </div>
     </li>
     '''
-    title = book.text       # 取得書名
+    title = book.text              # 取得書名
     url = book.attrib['href']      # 取得單品頁連結
-    rank = int(url[-3:])
-    url = url[:-15]
-    # print(url)
-    # url = url[:url.find('?')] if url.find('?') else url
-    passed = False
-    multiplier = 1
+    rank = int(url[-3:])           # 單品頁網址的最後 3 碼是排名
+    url = url[:-15]                # 單品頁網址的參數是博客來追蹤用使用者路徑使用, 不用留
+    
+    # 連續讀取博客來頁面會被擋, 通常等 20 秒可通過
+    # 但落連續次數太多, 就需要等約 1 分鐘以後才能讀取
+    passed = False                 # 尚未通過博客來擋爬蟲
+    multiplier = 1                 # 等候時間的乘數
 
     while not passed:
         try:
-            page_book = pq(url, headers=headers)
-            passed = True
-            if multiplier > 1:
-                multiplier = multiplier - 2
-        except:
-            sleep_time = random.randrange(20, 30) * multiplier
-            print('sleep ' + str(sleep_time) + 'secs....')
-            time.sleep(sleep_time)
-            multiplier = multiplier + 2
+            page_book = pq(url, headers=headers)  # 嘗試取得頁面
+            passed = True                         # 成功取得頁面
+            if multiplier > 1:                    # 如果是多次等待
+                multiplier = multiplier - 2       # 遞減乘數
+        except:                                   # 被擋無法取得頁面
+            sleep_time = random.randrange(20, 30) * multiplier # 用亂數決定等待時間
+            print('sleep ' + str(sleep_time) + 'secs....')     # 假裝不是爬蟲機器人
+            time.sleep(sleep_time)                # 等待
+            multiplier = multiplier + 2           # 每失敗一次, 乘數加 2
 
     '''
     <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
