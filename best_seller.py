@@ -1,6 +1,8 @@
 from pyquery import PyQuery as pq
+import openpyxl
 import argparse
 import time
+import datetime
 import random
 
 parser = argparse.ArgumentParser(
@@ -19,6 +21,11 @@ parser.add_argument(
 parser.add_argument(
     '-c', '--csv', 
     help="將資料儲存到 .csv 檔",
+    action="store_true"
+)
+parser.add_argument(
+    '-x', '--xlsx', 
+    help="將資料儲存到 .xlsx 檔",
     action="store_true"
 )
 args = parser.parse_args()
@@ -123,7 +130,7 @@ def go_tenlong(book):
     pub = infos[0].text
     infos = page_book('.info-content')
     price = infos[2].text[1:]
-    pub_date = infos[1].text
+    pub_date = infos[1].text.replace('-', '/')
     pages = infos[6].text
     return rank, title, author, pub, price, pub_date
 
@@ -160,6 +167,10 @@ def go_books(book):
     # 但落連續次數太多, 就需要等約 1 分鐘以後才能讀取
     passed = False                 # 尚未通過博客來擋爬蟲
     multiplier = 1                 # 等候時間的乘數
+
+    # 測試用, 只處理單一本書
+    # if rank != 1:
+    #     return rank, title, 'mee', 'mee', '800', '2021/07/21'
 
     while not passed:
         try:
@@ -288,6 +299,12 @@ if args.csv:
     # 建立檔案
     f = open(fname, 'w', encoding='utf-8')
 
+# 如果要將輸出結果存檔
+if args.xlsx:
+    # 建立空的試算表
+    wb = openpyxl.workbook.Workbook()
+    sh = wb.active
+
 # 論流取得排行榜的每一個分頁
 for page_no in range(sites[args.site]['pages']):
     url = sites[args.site][args.period].format(page_no + 1)
@@ -308,5 +325,28 @@ for page_no in range(sites[args.site]['pages']):
         if args.csv:
             f.write(fmt_str)
 
+        # 使用 openpyxl 寫入 excel 檔
+        if args.xlsx:
+            sh['A' + str(rank)].value = int(rank)
+            sh['B' + str(rank)].value = title
+            sh['C' + str(rank)].value = author
+            sh['D' + str(rank)].value = pub
+            sh['E' + str(rank)].value = int(price.replace(',', ''))
+            sh['F' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
+            sh['F' + str(rank)].number_format = 'YYYY/MM/DD'
+
 if args.csv:
     f.close()
+
+if args.xlsx:
+    # 利用目前時間組成 books_7_20210721_1331.xlsx 格式的檔名
+    ts = time.localtime()
+    fname = '{}_{}_{:4d}{:02d}{:02d}.xlsx'.format(
+        args.site,
+        args.period,
+        ts.tm_year,
+        ts.tm_mon,
+        ts.tm_mday
+    )
+    wb.save(fname)
+    wb.close()
