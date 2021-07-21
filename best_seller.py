@@ -129,7 +129,7 @@ def go_tenlong(book):
     infos = page_book('.info-content a')
     pub = infos[0].text
     infos = page_book('.info-content')
-    price = infos[2].text[1:]
+    price = infos[2].text[1:].replace(',', '')
     pub_date = infos[1].text.replace('-', '/')
     pages = infos[6].text
     return rank, title, author, pub, price, pub_date
@@ -331,7 +331,7 @@ for page_no in range(sites[args.site]['pages']):
             sh['B' + str(rank)].value = title
             sh['C' + str(rank)].value = author
             sh['D' + str(rank)].value = pub
-            sh['E' + str(rank)].value = int(price.replace(',', ''))
+            sh['E' + str(rank)].value = int(price)
             sh['F' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
             sh['F' + str(rank)].number_format = 'YYYY/MM/DD'
 
