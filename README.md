@@ -1,6 +1,6 @@
 # 書籍銷售排行榜爬蟲
 
-這是針對天瓏、博客來網站 7/30 天排行榜的爬蟲, 可以幫助您取得排行榜資料, 並切分為以下欄位：
+這是針對天瓏、博客來網站 7/30 天排行榜的 Python 爬蟲, 可以幫助您取得排行榜資料, 並切分為以下欄位：
 
 1. 排名
 2. 書名
@@ -14,7 +14,11 @@
 1. best_seller.py
 2. tenlong.py
 
-使用時需要 [pyquery](https://pypi.org/project/pyquery/) 模組。
+使用時需要：
+
+- [pyquery](https://pypi.org/project/pyquery/) 模組
+
+- [openpyxl](https://pypi.org/project/openpyxl/)模組
 
 ## best_seller.py
 
@@ -25,9 +29,24 @@ best_seller.py [-h] [-c] site period
 
 - -h, --help   顯示使用說明頁
 - -c, --csv    將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.csv
+- -x, --xlsx   將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.xlsx
 site            {tenlong,books}, 指定查詢天瓏或是博客來的排行榜
 period          {7,30}, 指定週或是月排行榜
 ```
+
+### 捷徑版本的 DOS 批次檔
+
+為了方便一般使用者, 在倉庫中隨附上了已經安裝好相關模組的 3.6.6 版 Python, 並提供以下 DOS 批次檔作為使用的捷徑：
+
+- tenlong7.bat：擷取天瓏當週熱銷榜並儲存至 excel 檔案
+
+- tenlong30.bat：擷取天瓏當月熱銷榜並儲存至 excel 檔案
+
+- books7.bat：擷取博客來 7 天熱銷榜並儲存至 excel 檔案
+
+- books30.bat：擷取博客來 30 天熱銷榜並儲存至 excel 檔案
+
+使用時只要直接執行批次檔 (可在檔案總管中雙按執行) 即可, 博客來因為會擋爬蟲, 中間都需要等待時間, 完整擷取完約需 20~30 分鐘。
 
 ## tenlong.py
 
@@ -56,3 +75,13 @@ python tenlong.py -y 2021 -m 1 -p 3 -f
 ```
 
 就會從 2021/1 的前一個月, 也就是 2020/12 開始往回 3 個月, 統計 2020/10~2020/12 這 3 個月的資料, 並且存檔到 s_2020_10_plus_03.txt 中。
+
+## 實作說明
+
+博客來阻擋爬蟲的方式：
+
+1. 針對連續 (無停頓) 存取網頁會採取回應逾時的方式阻擋, 目前測試約連續兩次就會被擋, 這時需要暫停約 20 秒鐘才能再度存取。
+
+2. 大約 30 次存取後, 會更嚴格阻擋, 這時需要暫停約 60 秒才能繼續存取。
+
+天瓏網站目前並沒有阻擋機制。
