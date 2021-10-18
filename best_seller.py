@@ -124,12 +124,23 @@ def go_tenlong(book):
                     <span class="info-title">頁數:</span>
                     <span class="info-content">496</span>
                 </li>
+
+    有些單品頁的價格長這樣, 要特別處理：
+
+                    <span class="info-title">售價:</span>
+                    <span class="info-content">
+                        <span class="pricing">$620</span>
+                    <span class="info-content">
     '''
     author = page_book('.item-author').text()
     infos = page_book('.info-content a')
     pub = infos[0].text
     infos = page_book('.info-content')
-    price = infos[2].text[1:].replace(',', '')
+    price = infos[2].text
+    if price[0] == '$':
+        price = price[1:].replace(',', '')
+    else:
+        price = page_book('.info-content .pricing')[0].text[1:].replace(',', '')
     pub_date = infos[1].text.replace('-', '/')
     pages = infos[6].text
     return rank, title, author, pub, price, pub_date
