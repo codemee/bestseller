@@ -136,14 +136,27 @@ def go_tenlong(book):
     infos = page_book('.info-content a')
     pub = infos[0].text
     infos = page_book('.info-content')
-    price = infos[2].text
-    if price[0] == '$':
-        price = price[1:].replace(',', '')
+    street_price = price = infos[2].text
+    discount = '100'
+    prices = page_book('.info-content .pricing')
+    if len(prices) > 1:
+        street_price = prices[1].text
+        discount = prices[0].text
     else:
-        price = page_book('.info-content .pricing')[0].text[1:].replace(',', '')
+        price = prices[0].text
+
+    price = price[1:].replace(',', '')
+    street_price = street_price[1:].replace(',', '')
+    discount = discount.replace('.', '')
+    # if price[0] == '$':
+    #     price = price[1:].replace(',', '')
+    # else:
+    #     price = page_book('.info-content .pricing')[0].text[1:].replace(',', '')
     pub_date = infos[1].text.replace('-', '/')
     pages = infos[6].text
-    return rank, title, author, pub, price, pub_date
+
+
+    return rank, title, author, pub, price, discount, street_price, pub_date
 
 def go_books(book):
     '''
@@ -182,6 +195,11 @@ def go_books(book):
     # 測試用, 只處理單一本書
     # if rank != 1:
     #     return rank, title, 'mee', 'mee', '800', '2021/07/21'
+    
+    # 先隨機等待時間, 不過好像沒差
+    # sleep_time = random.randrange(2, 10)           # 用亂數決定等待時間
+    # print('sleep ' + str(sleep_time) + ' secs....') # 假裝不是爬蟲機器人
+    # time.sleep(sleep_time)                         # 等待
 
     while not passed:
         try:
@@ -191,7 +209,7 @@ def go_books(book):
                 multiplier = multiplier - 2       # 遞減乘數
         except:                                   # 被擋無法取得頁面
             sleep_time = random.randrange(20, 30) * multiplier # 用亂數決定等待時間
-            print('sleep ' + str(sleep_time) + 'secs....')     # 假裝不是爬蟲機器人
+            print('sleep ' + str(sleep_time) + ' secs....')    # 假裝不是爬蟲機器人
             time.sleep(sleep_time)                # 等待
             multiplier = multiplier + 2           # 每失敗一次, 乘數加 2
 
@@ -263,10 +281,21 @@ def go_books(book):
                 author = author + ' ' + item.find('a').text + ' 譯'
 
     '''
-    <p class="price">原價：<strong>380</strong>元</p>
+    <ul class="price">
+    <li>定價：<em>680</em>元</li>
+    <li>優惠價：<strong><b>95</b></strong>折<strong class="price01"><b>646</b></strong>元</li><li>
     '''
     price = page_book('.price li em')[0].text
-    return rank, title, author, pub, price, pub_date
+    street_price = page_book('.price01 b')[0].text
+    discount = page_book('.price li strong b')[0].text
+    '''
+    <ul class="price">
+    <li>定價：<em>500</em>元</li>
+    <li>優惠價：<strong><b>5</b></strong>折<strong class="price01"><b>250</b></strong>元</li>
+    '''
+    if len(discount) == 1:          # 處理 5 折這樣的狀況        
+        discount = discount + '0'   # 補 0
+    return rank, title, author, pub, price, discount, street_price, pub_date
 
 # 各網站排行版資料
 sites = {
@@ -322,14 +351,16 @@ for page_no in range(sites[args.site]['pages']):
     page = pq(url, headers=headers)               # 取得排行版 HTML 內容
     books = page(sites[args.site]['cssselector']) # 排行榜上每一本書是一個 single-book 類別的元素
     for book in books:                            # 處理每一本書
-        rank, title, author, pub, price, pub_date = sites[args.site]['digger'](book)
+        rank, title, author, pub, price, discount, street_price, pub_date = sites[args.site]['digger'](book)
         # 建立以 tab 區隔欄位的一筆資料
-        fmt_str = "{:d}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\n".format( 
+        fmt_str = "{:d}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\n".format( 
             rank,                                 # 排名
             title,                                # 書名
             author,                               # 作者
             pub,                                  # 出版社
             price,                                # 定價
+            discount,                             # 折扣
+            street_price,                         # 售價
             pub_date                              # 出版日期
         )
         print(fmt_str, end='')                    # 顯示每一本書的資料
@@ -343,8 +374,10 @@ for page_no in range(sites[args.site]['pages']):
             sh['C' + str(rank)].value = author
             sh['D' + str(rank)].value = pub
             sh['E' + str(rank)].value = int(price)
-            sh['F' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
-            sh['F' + str(rank)].number_format = 'YYYY/MM/DD'
+            sh['F' + str(rank)].value = float(discount)
+            sh['G' + str(rank)].value = int(street_price)
+            sh['H' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
+            sh['H' + str(rank)].number_format = 'YYYY/MM/DD'
 
 if args.csv:
     f.close()
