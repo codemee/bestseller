@@ -5,31 +5,6 @@ import time
 import datetime
 import random
 
-parser = argparse.ArgumentParser(
-    description="抓取天瓏/博客來電腦書熱銷排行榜資料"
-)
-parser.add_argument(
-    'site', 
-    help="指定網站, 可用 tenlong, books 指定天瓏或是博客來",
-    choices=['tenlong', 'books']
-)
-parser.add_argument(
-    'period', 
-    help="指定期間, 可用 7, 30 指定 7 天或是 30 天熱銷榜",
-    choices=['7', '30']
-)
-parser.add_argument(
-    '-c', '--csv', 
-    help="將資料儲存到 .csv 檔",
-    action="store_true"
-)
-parser.add_argument(
-    '-x', '--xlsx', 
-    help="將資料儲存到 .xlsx 檔",
-    action="store_true"
-)
-args = parser.parse_args()
-
 def go_tenlong(book):
     '''
     每一本書內容如下：
@@ -299,31 +274,104 @@ def go_books(book):
 
 # 各網站排行版資料
 sites = {
-    'tenlong': {                      # 天瓏排行版的資料
-                                      # 本月熱銷排行榜的網址
-        '30':'https://www.tenlong.com.tw/zh_tw/recent_bestselling?page={:d}&range=30',
-                                      # 本週熱銷排行榜的網址
-        '7':'https://www.tenlong.com.tw/zh_tw/recent_bestselling?page={:d}&range=7',
-        'pages':4,                    # 分成 4 頁
-        'digger':go_tenlong,          # 拆解單品頁資料的函式
-        'cssselector':'.single-book'  # 排行榜頁面單一本書標籤的 CSS 選擇器
+    # 每個排行榜的資料結構如下：
+    # '網站識別名稱 (自取)': {
+    #    'name': '網站完整名稱',
+    #    'charts': {
+    #       '排行榜識別代號': {
+    #            'name': '排行榜完整名稱',
+    #           'url': '排行榜網址',
+    #           'cssselector': '單本書在網頁內的 CSS 選擇器'
+    #       },
+    #    }
+    #    'pages': 排行榜的頁數,
+    #    'digger': 從排行榜單本書元素再取出單品頁找出細項資料的函式
+    # }
+    'tenlong': { # 天瓏排行榜的資料
+        'name': '天瓏書局',
+        'charts': {
+            '30':{
+                'name': '天瓏 30 天排行榜',
+                'url':'https://www.tenlong.com.tw/zh_tw/recent_bestselling?page={:d}&range=30',
+                'cssselector':'.single-book'
+            },                                      
+            '7':{
+                'name': '天瓏 7 天排行榜',
+                'url':'https://www.tenlong.com.tw/zh_tw/recent_bestselling?page={:d}&range=7',
+                'cssselector':'.single-book'
+            },
+        },                              
+        'pages':4,             # 分成 4 頁
+        'digger':go_tenlong,   # 取出天瓏單品頁內各項資料的函式
     },
-    'books': {
-        '30':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=30',
-        '7':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=7',
-        'pages':1,
-        'digger':go_books,
-        'cssselector':'.type02_bd-a h4 a'
+    'books': { # 博客來排行榜的資料
+        'name': '博客來網路書店',
+        'charts': {
+            '30':{
+                'name': '博客來 30 天排行榜',
+                'url':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=30',
+                'cssselector':'.type02_bd-a h4 a'
+            },        
+            '7':{
+                'name': '博客來 7 天排行榜',
+                'url':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=7',
+                'cssselector':'.type02_bd-a h4 a'
+            },
+            '100':{
+                'name': '博客來年度 100 大排行榜',
+                'url':'https://www.books.com.tw/web/annual100_cat/2114?loc=P_0004_015',
+                'cssselector':'.type02_m100 h4 a'
+            },
+        },
+        'pages':1,            # 博客來排行榜都只有一頁
+        'digger':go_books,    # 取出博客來單品頁內各項資料的函式
     }
 }
 
-# 設定亂數種子初始值
-random.seed()
+site_names = ''          # 取得所有的網站識別名稱與完整名稱
+site_keys = sites.keys() # 取得所有網站的代碼
+chart_names = ''         # 取得所有排行榜的代碼與完整名稱
+chart_keys = set()       # 取得所有排行榜的代碼
 
-# 瀏覽器識別字串
-headers = {
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0'
-}
+for key_site in sites:
+    site = sites[key_site]
+    site_names += "{:10}：{}\n".format(key_site, site['name'])
+    chart_names += "{}：\n".format(site['name'])
+    for key_chart in site['charts']:
+        chart = site['charts'][key_chart]
+        chart_keys.add(key_chart)
+        chart_names += "\t{:3}：{}\n".format(key_chart, chart['name'])
+
+parser = argparse.ArgumentParser(
+    description="抓取天瓏/博客來電腦書熱銷排行榜資料",
+    formatter_class=argparse.RawTextHelpFormatter
+)
+
+parser.add_argument(
+    'site', 
+    help=f"網站識別名稱, 可用的網站識別名稱如下：\n{site_names}\n",
+    choices=site_keys
+)
+
+parser.add_argument(
+    'period', 
+    help=f"期間代號, 可用的代號如下：\n{chart_names}\n",
+    choices=list(chart_keys)
+)
+
+parser.add_argument(
+    '-c', '--csv', 
+    help="將資料儲存到 .csv 檔",
+    action="store_true"
+)
+
+parser.add_argument(
+    '-x', '--xlsx', 
+    help="將資料儲存到 .xlsx 檔",
+    action="store_true"
+)
+
+args = parser.parse_args()   # 解析命令列參數
 
 # 如果要將輸出結果存檔
 if args.csv:
@@ -345,13 +393,24 @@ if args.xlsx:
     wb = openpyxl.workbook.Workbook()
     sh = wb.active
 
+# 設定亂數種子初始值
+random.seed()
+
+# 瀏覽器識別字串
+headers = {
+    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0'
+}
+
+site = sites[args.site]                # 要爬取排行榜的網站
+chart = site['charts'][args.period]    # 要爬取的排行榜
+
 # 論流取得排行榜的每一個分頁
-for page_no in range(sites[args.site]['pages']):
-    url = sites[args.site][args.period].format(page_no + 1)
+for page_no in range(site['pages']):
+    url = chart['url'].format(page_no + 1)
     page = pq(url, headers=headers)               # 取得排行版 HTML 內容
-    books = page(sites[args.site]['cssselector']) # 排行榜上每一本書是一個 single-book 類別的元素
+    books = page(chart['cssselector'])            # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
     for book in books:                            # 處理每一本書
-        rank, title, author, pub, price, discount, street_price, pub_date = sites[args.site]['digger'](book)
+        rank, title, author, pub, price, discount, street_price, pub_date = site['digger'](book)
         # 建立以 tab 區隔欄位的一筆資料
         fmt_str = "{:d}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\n".format( 
             rank,                                 # 排名
