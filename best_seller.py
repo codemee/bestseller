@@ -255,15 +255,24 @@ def go_books(book):
             elif item.text.startswith("譯者："):
                 author = author + ' ' + item.find('a').text + ' 譯'
 
-    '''
-    <ul class="price">
-    <li>定價：<em>680</em>元</li>
-    <li>優惠價：<strong><b>95</b></strong>折<strong class="price01"><b>646</b></strong>元</li><li>
-    '''
-    price = page_book('.price li em')[0].text
-    street_price = page_book('.price01 b')[0].text
-    discount = page_book('.price li strong b')[0].text
-    '''
+    if page_book('.price li em').length > 0:
+        '''
+        <ul class="price">
+        <li>定價：<em>680</em>元</li>
+        <li>優惠價：<strong><b>95</b></strong>折<strong class="price01"><b>646</b></strong>元</li><li>
+        '''
+        price = page_book('.price li em')[0].text
+        street_price = page_book('.price01 b')[0].text
+        discount = page_book('.price li strong b')[0].text
+    else:
+        '''
+        <ul class="price">
+        <li>定價：<strong class="price01"><b>599</b></strong>元</li></ul>
+        '''
+        street_price = price = page_book('.price li strong b')[0].text
+        discount = '100'
+
+    '''    
     <ul class="price">
     <li>定價：<em>500</em>元</li>
     <li>優惠價：<strong><b>5</b></strong>折<strong class="price01"><b>250</b></strong>元</li>
