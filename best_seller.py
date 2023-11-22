@@ -416,6 +416,7 @@ chart = site['charts'][args.period]    # 要爬取的排行榜
 # 論流取得排行榜的每一個分頁
 for page_no in range(site['pages']):
     url = chart['url'].format(page_no + 1)
+    headers['referer'] = site['pages']
     page = pq(url, headers=headers)               # 取得排行版 HTML 內容
     books = page(chart['cssselector'])            # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
     for book in books:                            # 處理每一本書
