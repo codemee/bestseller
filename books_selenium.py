@@ -229,6 +229,18 @@ parser.add_argument(
     action="store_true"
 )
 
+parser.add_argument(
+    '-b', '--browser', 
+    help="顯示瀏覽器視窗",
+    action="store_true"
+)
+
+parser.add_argument(
+    '-l', '--log', 
+    help="顯示瀏覽器的 log 資訊",
+    action="store_true"
+)
+
 args = parser.parse_args()   # 解析命令列參數
 
 # 如果要將輸出結果存檔
@@ -254,7 +266,16 @@ if args.xlsx:
 site = sites[args.site]                # 要爬取排行榜的網站
 chart = site['charts'][args.period]    # 要爬取的排行榜
 
-driver = webdriver.Edge()
+options = webdriver.EdgeOptions()
+options.add_argument('--disable-extensions')
+
+if not args.browser: # 不要顯示瀏覽器畫面
+    options.add_argument('--headless')
+if not args.log:     # 不要顯示瀏覽器的 log 資訊
+    options.add_argument('--log-level=3')
+# service = webdriver.EdgeService(service_args=['--silence'])
+driver = webdriver.Edge(options=options)
+
 
 # 論流取得排行榜的每一個分頁
 for page_no in range(site['pages']):
