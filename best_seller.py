@@ -35,7 +35,7 @@ def go_tenlong(book):
     if span is not None:
         rank = int(span.text)                                   # 取得名次數值
     url = 'https://www.tenlong.com.tw/products/{:s}?list_name=r-zh_tw'.format(isbn)
-    page_book = pq(url)                       # 取得單品頁
+    page_book = pq(url=url)                       # 取得單品頁
     '''
     單品頁內個書籍料如下：
 
@@ -133,153 +133,158 @@ def go_tenlong(book):
 
     return rank, title, author, pub, price, discount, street_price, pub_date
 
-def go_books(book):
-    '''
-    每一本書內容如下：
-    <li class="item">
-        <div class="stitle">
-            <p class="no_list"><span class="symbol icon_01">TOP</span><strong class="no">1</strong>
-            </p>
-        </div><a href="https://www.books.com.tw/products/0010822522?loc=P_0001_001"><img
-                class="cover"
-                src="https://im1.book.com.tw/image/getImage?i=https://www.books.com.tw/img/001/082/25/0010822522.jpg&v=5cda990c&w=150&h=150"
-                alt="原子習慣：細微改變帶來巨大成就的實證法則"></a>
-        <div class="type02_bd-a">
-            <h4><a
-                    href="https://www.books.com.tw/products/0010822522?loc=P_0001_001">原子習慣：細微改變帶來巨大成就的實證法則</a>
-            </h4>
-            <ul class="msg">
-                <li>作者：<a
-                        href='//search.books.com.tw/search/query/key/%E8%A9%B9%E5%A7%86%E6%96%AF%E2%80%A7%E5%85%8B%E5%88%A9%E7%88%BE/adv_author/1/'>詹姆斯‧克利爾</a>
-                </li>
-                <li class="price_a">優惠價：<strong><b>79</b></strong>折<strong><b>261</b></strong>元</li>
-            </ul>
-        </div>
-    </li>
-    '''
-    title = book.text              # 取得書名
-    url = book.attrib['href']      # 取得單品頁連結
-    rank = int(url[-3:])           # 單品頁網址的最後 3 碼是排名
-    url = url[:-15]                # 單品頁網址的參數是博客來追蹤用使用者路徑使用, 不用留
+# 博客來已經改用 selenium 取得資料, 所以這個函數已經不用了
+# def go_books(book):
+#     '''
+#     每一本書內容如下：
+#     <li class="item">
+#         <div class="stitle">
+#             <p class="no_list"><span class="symbol icon_01">TOP</span><strong class="no">1</strong>
+#             </p>
+#         </div><a href="https://www.books.com.tw/products/0010822522?loc=P_0001_001"><img
+#                 class="cover"
+#                 src="https://im1.book.com.tw/image/getImage?i=https://www.books.com.tw/img/001/082/25/0010822522.jpg&v=5cda990c&w=150&h=150"
+#                 alt="原子習慣：細微改變帶來巨大成就的實證法則"></a>
+#         <div class="type02_bd-a">
+#             <h4><a
+#                     href="https://www.books.com.tw/products/0010822522?loc=P_0001_001">原子習慣：細微改變帶來巨大成就的實證法則</a>
+#             </h4>
+#             <ul class="msg">
+#                 <li>作者：<a
+#                         href='//search.books.com.tw/search/query/key/%E8%A9%B9%E5%A7%86%E6%96%AF%E2%80%A7%E5%85%8B%E5%88%A9%E7%88%BE/adv_author/1/'>詹姆斯‧克利爾</a>
+#                 </li>
+#                 <li class="price_a">優惠價：<strong><b>79</b></strong>折<strong><b>261</b></strong>元</li>
+#             </ul>
+#         </div>
+#     </li>
+#     '''
+#     title = book.text              # 取得書名
+#     url = book.attrib['href']      # 取得單品頁連結
+#     rank = int(url[-3:])           # 單品頁網址的最後 3 碼是排名
+#     url = url[:-15]                # 單品頁網址的參數是博客來追蹤用使用者路徑使用, 不用留
     
-    # 連續讀取博客來頁面會被擋, 通常等 20 秒可通過
-    # 但落連續次數太多, 就需要等約 1 分鐘以後才能讀取
-    passed = False                 # 尚未通過博客來擋爬蟲
-    multiplier = 1                 # 等候時間的乘數
+#     # 連續讀取博客來頁面會被擋, 通常等 20 秒可通過
+#     # 但落連續次數太多, 就需要等約 1 分鐘以後才能讀取
+#     passed = False                 # 尚未通過博客來擋爬蟲
+#     multiplier = 1                 # 等候時間的乘數
 
-    # 測試用, 只處理單一本書
-    # if rank != 1:
-    #     return rank, title, 'mee', 'mee', '800', '2021/07/21'
+#     # 測試用, 只處理單一本書
+#     # if rank != 1:
+#     #     return rank, title, 'mee', 'mee', '800', '2021/07/21'
     
-    # 先隨機等待時間, 不過好像沒差
-    # sleep_time = random.randrange(2, 10)           # 用亂數決定等待時間
-    # print('sleep ' + str(sleep_time) + ' secs....') # 假裝不是爬蟲機器人
-    # time.sleep(sleep_time)                         # 等待
+#     # 先隨機等待時間, 不過好像沒差
+#     # sleep_time = random.randrange(2, 10)           # 用亂數決定等待時間
+#     # print('sleep ' + str(sleep_time) + ' secs....') # 假裝不是爬蟲機器人
+#     # time.sleep(sleep_time)                         # 等待
 
-    while not passed:
-        try:
-            page_book = pq(url, headers=headers)  # 嘗試取得頁面
-            passed = True                         # 成功取得頁面
-            if multiplier > 1:                    # 如果是多次等待
-                multiplier = multiplier - 2       # 遞減乘數
-        except:                                   # 被擋無法取得頁面
-            sleep_time = random.randrange(20, 30) * multiplier # 用亂數決定等待時間
-            print('sleep ' + str(sleep_time) + ' secs....')    # 假裝不是爬蟲機器人
-            time.sleep(sleep_time)                # 等待
-            multiplier = multiplier + 2           # 每失敗一次, 乘數加 2
+#     while not passed:
+#         try:
+#             page_book = pq(url=url, headers=headers)  # 嘗試取得頁面
+#             page_title = page_book('title').text()
+#             print(page_title)
+#             if page_title.startswith('Error'):
+#                 raise Exception('IP 被擋')
+#             passed = True                         # 成功取得頁面
+#             if multiplier > 1:                    # 如果是多次等待
+#                 multiplier = multiplier - 2       # 遞減乘數
+#         except:                                   # 被擋無法取得頁面
+#             sleep_time = random.randrange(20, 30) * multiplier # 用亂數決定等待時間
+#             print('sleep ' + str(sleep_time) + ' secs....')    # 假裝不是爬蟲機器人
+#             time.sleep(sleep_time)                # 等待
+#             multiplier = multiplier + 2           # 每失敗一次, 乘數加 2
 
-    '''
-    <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
-    <html>
-    <head>
-        <meta http-equiv="content-type" content="text/html; charset=utf-8">
-        <meta http-equiv="Content-Language" content="zh-tw">
-        <title>博客來-大數據時代超吸睛視覺化工具與技術：Tableau資料分析師進階高手養成實戰經典</title>
-        <meta name="keywords" content="大數據時代超吸睛視覺化工具與技術：Tableau資料分析師進階高手養成實戰經典">
-        <meta name="description"
-            content="書名：大數據時代超吸睛視覺化工具與技術：Tableau資料分析師進階高手養成實戰經典，語言：繁體中文，ISBN：9789864344963，頁數：384，出版社：博碩，作者：彭其捷,劉姿嘉，出版日期：2020/07/28，類別：電腦資訊">
-        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+#     '''
+#     <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+#     <html>
+#     <head>
+#         <meta http-equiv="content-type" content="text/html; charset=utf-8">
+#         <meta http-equiv="Content-Language" content="zh-tw">
+#         <title>博客來-大數據時代超吸睛視覺化工具與技術：Tableau資料分析師進階高手養成實戰經典</title>
+#         <meta name="keywords" content="大數據時代超吸睛視覺化工具與技術：Tableau資料分析師進階高手養成實戰經典">
+#         <meta name="description"
+#             content="書名：大數據時代超吸睛視覺化工具與技術：Tableau資料分析師進階高手養成實戰經典，語言：繁體中文，ISBN：9789864344963，頁數：384，出版社：博碩，作者：彭其捷,劉姿嘉，出版日期：2020/07/28，類別：電腦資訊">
+#         <meta http-equiv="X-UA-Compatible" content="IE=edge">
 
-    在 content 屬性內的資料在作譯者欄位有時候不一致, 要特別小心：
+#     在 content 屬性內的資料在作譯者欄位有時候不一致, 要特別小心：
 
-    書名：大數據時代超吸睛視覺化工具與技術：Tableau資料分析師進階高手養成實戰經典，語言：繁體中文，ISBN：9789864344963，頁數：384，出版社：博碩，作者：彭其捷,劉姿嘉，出版日期：2020/07/28，類別：電腦資訊
-    書名：向藝術大師學Procreate：有iPad就能畫！初學者也能上手的Procreate插畫課，原文名稱：BEGINNER’S GUIDE TO DIGITAL PAINTING IN PROCREATE，語言：繁體中文，ISBN：9789863126638，頁數：212，出版社：旗標，譯者：吳郁芸，出版日期：2021/06/23，類別：藝術設計
-    書名：資料科學的建模基礎：別急著coding！你知道模型的陷阱嗎？，原文名稱：データ分析のための数理モデル入門 本質をとらえた分析のために，語言：繁體中文，ISBN：9789863126621，頁數：296，出版社：旗標，作者：江崎貴裕，譯者：王心薇，出版日期：2021/06/11，類別：電腦資訊
-    書名：我也要當 YouTuber(第二版)：百萬粉絲網紅不能說的秘密 - 拍片、剪輯、直播與宣傳實戰大揭密，語言：繁體中文，ISBN：9789865027926，頁數：256，出版社：碁峰，出版日期：2021/05/04，類別：商業理財
-    '''
-    detail = page_book('head meta')[3].attrib['content']
-    idx_author = detail.find('，作者：')
-    if idx_author == -1:
-        idx_author = detail.find('，譯者：')
-    idx_pub = detail.find('出版社：')
-    idx_date = detail.find('，出版日期：')
-    pub_date = detail[(idx_date+6):(idx_date+16)]
-    if idx_author != -1:
-        pub = detail[(idx_pub+4):idx_author]
-        author = detail[(idx_author+4):idx_date]
-        if author.find('，譯者：') == -1:
-            if detail.find('，作者：') == -1:
-                author = author + " 譯"    
-            else:
-                author = author + " 著"
-        else:
-            author = author.replace('，譯者：', " 著 ")
-            author = author + " 譯"
-    else:
-        '''
-        有些書在 content 屬性中沒有作譯者, 必須到頁面內去挖：
+#     書名：大數據時代超吸睛視覺化工具與技術：Tableau資料分析師進階高手養成實戰經典，語言：繁體中文，ISBN：9789864344963，頁數：384，出版社：博碩，作者：彭其捷,劉姿嘉，出版日期：2020/07/28，類別：電腦資訊
+#     書名：向藝術大師學Procreate：有iPad就能畫！初學者也能上手的Procreate插畫課，原文名稱：BEGINNER’S GUIDE TO DIGITAL PAINTING IN PROCREATE，語言：繁體中文，ISBN：9789863126638，頁數：212，出版社：旗標，譯者：吳郁芸，出版日期：2021/06/23，類別：藝術設計
+#     書名：資料科學的建模基礎：別急著coding！你知道模型的陷阱嗎？，原文名稱：データ分析のための数理モデル入門 本質をとらえた分析のために，語言：繁體中文，ISBN：9789863126621，頁數：296，出版社：旗標，作者：江崎貴裕，譯者：王心薇，出版日期：2021/06/11，類別：電腦資訊
+#     書名：我也要當 YouTuber(第二版)：百萬粉絲網紅不能說的秘密 - 拍片、剪輯、直播與宣傳實戰大揭密，語言：繁體中文，ISBN：9789865027926，頁數：256，出版社：碁峰，出版日期：2021/05/04，類別：商業理財
+#     '''
+#     detail = page_book('head meta')[3].attrib['content']
+#     idx_author = detail.find('，作者：')
+#     if idx_author == -1:
+#         idx_author = detail.find('，譯者：')
+#     idx_pub = detail.find('出版社：')
+#     idx_date = detail.find('，出版日期：')
+#     pub_date = detail[(idx_date+6):(idx_date+16)]
+#     if idx_author != -1:
+#         pub = detail[(idx_pub+4):idx_author]
+#         author = detail[(idx_author+4):idx_date]
+#         if author.find('，譯者：') == -1:
+#             if detail.find('，作者：') == -1:
+#                 author = author + " 譯"    
+#             else:
+#                 author = author + " 著"
+#         else:
+#             author = author.replace('，譯者：', " 著 ")
+#             author = author + " 譯"
+#     else:
+#         '''
+#         有些書在 content 屬性中沒有作譯者, 必須到頁面內去挖：
 
-        <div class="type02_p003 clearfix">
-            <ul>
-                <li>編者： <a
-                        href="//search.books.com.tw/search/query/key/%E6%96%87%E6%B7%B5%E9%96%A3%E5%B7%A5%E4%BD%9C%E5%AE%A4/adv_author/1/">文淵閣工作室</a>
-                <li>出版社：<a
-                        href="https://www.books.com.tw/web/sys_puballb/books/?pubid=gotop           "><span>碁峰</span></a>
-                    &nbsp;<a id="trace_btn2" class="type02_btn02" href=""><span><span
-                                class="trace_txt">&nbsp;</span></span></a>
-                    <a href="//www.books.com.tw/activity/2015/06/trace/index.html#publisher" title="新功能介紹"
-                        target="_blank"><cite class="help">新功能介紹</cite></a></li>
-                <li>出版日期：2021/05/04</li>
-                <li>語言：繁體中文 </li>
-            </ul>
-        </div>
-        '''
-        pub = detail[(idx_pub+4):idx_date]
-        lists = page_book('.type02_p003 ul li')
-        author = ''
-        for item in lists:
-            if item.text.startswith("編者："):
-                author = author + item.find('a').text + ' 編'
-            elif item.text.startswith("原文作者："):
-                author = author + ' ' + item.find('a').text + ' 著'
-            elif item.text.startswith("譯者："):
-                author = author + ' ' + item.find('a').text + ' 譯'
+#         <div class="type02_p003 clearfix">
+#             <ul>
+#                 <li>編者： <a
+#                         href="//search.books.com.tw/search/query/key/%E6%96%87%E6%B7%B5%E9%96%A3%E5%B7%A5%E4%BD%9C%E5%AE%A4/adv_author/1/">文淵閣工作室</a>
+#                 <li>出版社：<a
+#                         href="https://www.books.com.tw/web/sys_puballb/books/?pubid=gotop           "><span>碁峰</span></a>
+#                     &nbsp;<a id="trace_btn2" class="type02_btn02" href=""><span><span
+#                                 class="trace_txt">&nbsp;</span></span></a>
+#                     <a href="//www.books.com.tw/activity/2015/06/trace/index.html#publisher" title="新功能介紹"
+#                         target="_blank"><cite class="help">新功能介紹</cite></a></li>
+#                 <li>出版日期：2021/05/04</li>
+#                 <li>語言：繁體中文 </li>
+#             </ul>
+#         </div>
+#         '''
+#         pub = detail[(idx_pub+4):idx_date]
+#         lists = page_book('.type02_p003 ul li')
+#         author = ''
+#         for item in lists:
+#             if item.text.startswith("編者："):
+#                 author = author + item.find('a').text + ' 編'
+#             elif item.text.startswith("原文作者："):
+#                 author = author + ' ' + item.find('a').text + ' 著'
+#             elif item.text.startswith("譯者："):
+#                 author = author + ' ' + item.find('a').text + ' 譯'
 
-    if page_book('.price li em').length > 0:
-        '''
-        <ul class="price">
-        <li>定價：<em>680</em>元</li>
-        <li>優惠價：<strong><b>95</b></strong>折<strong class="price01"><b>646</b></strong>元</li><li>
-        '''
-        price = page_book('.price li em')[0].text
-        street_price = page_book('.price01 b')[0].text
-        discount = page_book('.price li strong b')[0].text
-    else:
-        '''
-        <ul class="price">
-        <li>定價：<strong class="price01"><b>599</b></strong>元</li></ul>
-        '''
-        street_price = price = page_book('.price li strong b')[0].text
-        discount = '100'
+#     if page_book('.price li em').length > 0:
+#         '''
+#         <ul class="price">
+#         <li>定價：<em>680</em>元</li>
+#         <li>優惠價：<strong><b>95</b></strong>折<strong class="price01"><b>646</b></strong>元</li><li>
+#         '''
+#         price = page_book('.price li em')[0].text
+#         street_price = page_book('.price01 b')[0].text
+#         discount = page_book('.price li strong b')[0].text
+#     else:
+#         '''
+#         <ul class="price">
+#         <li>定價：<strong class="price01"><b>599</b></strong>元</li></ul>
+#         '''
+#         street_price = price = page_book('.price li strong b')[0].text
+#         discount = '100'
 
-    '''    
-    <ul class="price">
-    <li>定價：<em>500</em>元</li>
-    <li>優惠價：<strong><b>5</b></strong>折<strong class="price01"><b>250</b></strong>元</li>
-    '''
-    if len(discount) == 1:          # 處理 5 折這樣的狀況        
-        discount = discount + '0'   # 補 0
-    return rank, title, author, pub, price, discount, street_price, pub_date
+#     '''    
+#     <ul class="price">
+#     <li>定價：<em>500</em>元</li>
+#     <li>優惠價：<strong><b>5</b></strong>折<strong class="price01"><b>250</b></strong>元</li>
+#     '''
+#     if len(discount) == 1:          # 處理 5 折這樣的狀況        
+#         discount = discount + '0'   # 補 0
+#     return rank, title, author, pub, price, discount, street_price, pub_date
 
 # 各網站排行版資料
 sites = {
@@ -313,28 +318,29 @@ sites = {
         'pages':4,             # 分成 4 頁
         'digger':go_tenlong,   # 取出天瓏單品頁內各項資料的函式
     },
-    'books': { # 博客來排行榜的資料
-        'name': '博客來網路書店',
-        'charts': {
-            '30':{
-                'name': '博客來 30 天排行榜',
-                'url':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=30',
-                'cssselector':'.type02_bd-a h4 a'
-            },        
-            '7':{
-                'name': '博客來 7 天排行榜',
-                'url':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=7',
-                'cssselector':'.type02_bd-a h4 a'
-            },
-            '100':{
-                'name': '博客來年度 100 大排行榜',
-                'url':'https://www.books.com.tw/web/annual100_cat/2114?loc=P_0004_015',
-                'cssselector':'.type02_m100 h4 a'
-            },
-        },
-        'pages':1,            # 博客來排行榜都只有一頁
-        'digger':go_books,    # 取出博客來單品頁內各項資料的函式
-    }
+    # 博客來已經改用 selenium 取得資料, 所以這個函數已經不用了
+    # 'books': { # 博客來排行榜的資料
+    #     'name': '博客來網路書店',
+    #     'charts': {
+    #         '30':{
+    #             'name': '博客來 30 天排行榜',
+    #             'url':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=30',
+    #             'cssselector':'.type02_bd-a h4 a'
+    #         },        
+    #         '7':{
+    #             'name': '博客來 7 天排行榜',
+    #             'url':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=7',
+    #             'cssselector':'.type02_bd-a h4 a'
+    #         },
+    #         '100':{
+    #             'name': '博客來年度 100 大排行榜',
+    #             'url':'https://www.books.com.tw/web/annual100_cat/2114?loc=P_0004_015',
+    #             'cssselector':'.type02_m100 h4 a'
+    #         },
+    #     },
+    #     'pages':1,            # 博客來排行榜都只有一頁
+    #     'digger':go_books,    # 取出博客來單品頁內各項資料的函式
+    # }
 }
 
 site_names = ''          # 取得所有的網站識別名稱與完整名稱
@@ -417,7 +423,7 @@ chart = site['charts'][args.period]    # 要爬取的排行榜
 for page_no in range(site['pages']):
     url = chart['url'].format(page_no + 1)
     headers['referer'] = url
-    page = pq(url, headers=headers)               # 取得排行版 HTML 內容
+    page = pq(url=url, headers=headers)               # 取得排行版 HTML 內容
     books = page(chart['cssselector'])            # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
     for book in books:                            # 處理每一本書
         rank, title, author, pub, price, discount, street_price, pub_date = site['digger'](book)
