@@ -11,8 +11,9 @@
 
 這裡分為兩個工具程式：
 
-1. best_seller.py
-2. tenlong.py
+1. best_seller.py 
+2. books_selenium.py
+3. tenlong.py
 
 使用時需要：
 
@@ -22,21 +23,35 @@
 
 ## best_seller.py
 
-這個工具可以指定參數取得天瓏或是博客來的排行榜資料, 用法如下：
+這個工具原本可以取得天瓏或是博客來的排行榜資料, 目前專責天瓏。用法如下：
 
 ```
-best_seller.py [-h] [-c] site period
+best_seller.py [-h] [-c] [-x] site period
 
 - -h, --help   顯示使用說明頁
 - -c, --csv    將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.csv
 - -x, --xlsx   將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.xlsx
-site            {tenlong,books}, 指定查詢天瓏或是博客來的排行榜
+site            {tenlong,books}, 指定查詢天瓏排行榜, books 為博客來, 現在已經不支援, 請改用 books_selenium.py
+period          {7,30}, 指定週或是月排行榜
+```
+
+由於博客來擋爬蟲的條件越來越嚴格, 所以博客來的排行榜另外改用 selenium 透過 Edge 瀏覽器處理：
+
+```
+books_selenium.py [-h] [-c] [-x] [-b] [-l] site period
+
+- -h, --help    顯示使用說明頁
+- -c, --csv     將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.csv
+- -x, --xlsx    將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.xlsx
+- -l, --log     顯示 log, 預設不顯示, 在不顯示瀏覽器的情況下, 還是會顯示 "DevTools listening on ws://127.0.0.1..." 的訊息, 目前無解
+- -b, --browser 顯示瀏覽器視窗, 預設不顯示
+site            {tenlong,books}, 指定查詢天瓏排行榜, books 為博客來, 現在已經不支援, 請改用 books_selenium.py
 period          {7,30}, 指定週或是月排行榜
 ```
 
 ### 捷徑版本的 DOS 批次檔
 
-為了方便一般使用者, 在倉庫中隨附上了已經安裝好相關模組的 3.6.6 版 Python, 並提供以下 DOS 批次檔作為使用的捷徑：
+為了方便一般使用者, 在倉庫中隨附上了已經安裝好相關模組的 3.12.3 版 Python, 並提供以下 DOS 批次檔作為使用的捷徑：
 
 - tenlong7.bat：擷取天瓏當週熱銷榜並儲存至 excel 檔案
 
@@ -46,7 +61,7 @@ period          {7,30}, 指定週或是月排行榜
 
 - books30.bat：擷取博客來 30 天熱銷榜並儲存至 excel 檔案
 
-使用時只要直接執行批次檔 (可在檔案總管中雙按執行) 即可, 博客來因為會擋爬蟲, 中間都需要等待時間, 完整擷取完約需 20~30 分鐘。
+使用時只要直接執行批次檔 (可在檔案總管中雙按執行) 即可。
 
 ## tenlong.py
 
@@ -80,8 +95,10 @@ python tenlong.py -y 2021 -m 1 -p 3 -f
 
 博客來阻擋爬蟲的方式：
 
-1. 針對連續 (無停頓) 存取網頁會採取回應逾時的方式阻擋, 目前測試約連續兩次就會被擋, 這時需要暫停約 20 秒鐘才能再度存取。
+1. 針對非瀏覽器 (curl 或是 Python requests 模組) 連續 (無停頓) 存取網頁會採取回應逾時的方式阻擋, 目前測試約連續兩次就會被擋, 這時需要暫停約 20 秒鐘才能再度存取。
 
-2. 大約 30 次存取後, 會更嚴格阻擋, 這時需要暫停約 60 秒才能繼續存取。
+2. 再繼續存取會鎖 IP, 會得到 200 的正常連線, 但取得的是一個顯示錯誤的頁面, 不是正確的內容。
+
+為了應付以上問題, 還是乖乖地改用 selenium 透過瀏覽器存取博客來頁面, 不過仍會有從排行榜頁面循連結轉入單品頁取得詳細資料在返回爬行榜頁面來回 60 次後會導致 Edge 關閉, 目前測試只要暫停 30 秒後再繼續就可以正常運作。
 
 天瓏網站目前並沒有阻擋機制。
