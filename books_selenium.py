@@ -271,9 +271,15 @@ options.add_argument('--disable-extensions')
 
 if not args.browser: # 不要顯示瀏覽器畫面
     options.add_argument('--headless')
+
+# 目前 headless 模式下，還是會顯示
+# DevTools listening on ws://127.0.0.1........
+# 似乎是這裡討論的問題
+# https://github.com/SeleniumHQ/selenium/issues/13095
 if not args.log:     # 不要顯示瀏覽器的 log 資訊
     options.add_argument('--log-level=3')
-# service = webdriver.EdgeService(service_args=['--silence'])
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
 driver = webdriver.Edge(options=options)
 
 
