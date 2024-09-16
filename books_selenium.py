@@ -91,11 +91,11 @@ def go_books(book):
         author = ''
         for item in lists:
             if item.text.startswith("編者："):
-                author = author + item.find('a').text + ' 編'
+                author += item.text[3:] + ' 編'
             elif item.text.startswith("原文作者："):
-                author = author + ' ' + item.find('a').text + ' 著'
+                author += item.text[5:] + ' 著'
             elif item.text.startswith("譯者："):
-                author = author + ' ' + item.find('a').text + ' 譯'
+                author += item.text[3:] + ' 譯'
 
     if len(driver.find_elements(By.CSS_SELECTOR, '.price li em')) > 0:
         '''
@@ -294,6 +294,8 @@ for page_no in range(site['pages']):
         book = driver.find_elements(              # 取得排行榜上第 num 本書
             By.CSS_SELECTOR, 
             chart['cssselector'])[num]            # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
+        # if num != 79:                             # 除錯用, 只顯示某一本書
+        #     continue
         rank, title, author, pub, price, discount, street_price, pub_date = site['digger'](book)
         # 建立以 tab 區隔欄位的一筆資料
         fmt_str = "{:d}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\n".format( 
