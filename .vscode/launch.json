@@ -11,7 +11,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["books", "7"]
+            "args": ["tenlong", "7", "-x"]
         }
     ]
 }

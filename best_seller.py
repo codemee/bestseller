@@ -106,12 +106,37 @@ def go_tenlong(book):
                     <span class="info-content">
                         <span class="pricing">$620</span>
                     <span class="info-content">
+    還有這樣的：
+    
+                <li>
+                    <span class="info-title">
+                        出版商:
+                    </span>
+                    <span class="info-content">
+                        <a href="/publishers/4">碁峰資訊</a>
+                    </span>
+                </li>
+                <li>
+                    <span class="info-title">定價:</span>
+                    <span class="info-content">$580</span>
+                </li>
+                <li>
+                <span class="info-title">售價:</span>
+                <span class="info-content">
+                    <span class="pricing">7.9</span> 折
+                    <span class="pricing">$458</span>
+
+                <span class="info-content">
+                </li>
     '''
     author = page_book('.item-author').text()
     infos = page_book('.info-content a')
     pub = infos[0].text
     infos = page_book('.info-content')
-    street_price = price = infos[2].text
+    if infos[2].text.strip():
+        street_price = price = infos[2].text
+    else:
+        street_price = price = infos[1].text
     discount = '100'
     prices = page_book('.info-content .pricing')
     if len(prices) > 1:
@@ -123,11 +148,17 @@ def go_tenlong(book):
     price = price[1:].replace(',', '')
     street_price = street_price[1:].replace(',', '')
     discount = discount.replace('.', '')
+    # 有的書沒有折扣
+    if discount == '100':
+        street_price = price
     # if price[0] == '$':
     #     price = price[1:].replace(',', '')
     # else:
     #     price = page_book('.info-content .pricing')[0].text[1:].replace(',', '')
     pub_date = infos[1].text.replace('-', '/')
+    # 有些書莫名其妙沒有出版日期
+    if '/' not in pub_date:
+        pub_date = ''
     pages = infos[6].text
 
 
@@ -451,8 +482,9 @@ for page_no in range(site['pages']):
             sh['E' + str(rank)].value = int(price)
             sh['F' + str(rank)].value = float(discount)
             sh['G' + str(rank)].value = int(street_price)
-            sh['H' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
-            sh['H' + str(rank)].number_format = 'YYYY/MM/DD'
+            if pub_date:
+                sh['H' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
+                sh['H' + str(rank)].number_format = 'YYYY/MM/DD'
 
 if args.csv:
     f.close()
