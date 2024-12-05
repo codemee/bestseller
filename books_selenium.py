@@ -4,6 +4,7 @@ import openpyxl
 import argparse
 import time
 import datetime
+import json
 
 def scroll_to_element(driver, element):
     driver.execute_script("arguments[0].scrollIntoView(false);", element)
@@ -175,10 +176,15 @@ sites = {
                 'url':'https://www.books.com.tw/web/sys_saletopb/books/19?attribute=7',
                 'cssselector':'.type02_bd-a h4 a'
             },
-            '100':{
-                'name': '博客來年度 100 大排行榜',
-                'url':'https://www.books.com.tw/web/annual100_cat/2114?loc=P_0004_015',
-                'cssselector':'.type02_m100 h4 a'
+            '100_comp':{
+                'name': '博客來 2024 年度 100 大排行榜電腦書',
+                'url':'https://www.books.com.tw/web/annual100_cat/0116?loc=M_0005_017',
+                'cssselector':'h4 a'
+            },
+            '100_art':{
+                'name': '博客來 2024 年度 100 大排行榜藝術書',
+                'url':'https://www.books.com.tw/web/annual100_cat/0110?loc=P_0004_011',
+                'cssselector':'h4 a'
             },
         },
         'pages':1,            # 博客來排行榜都只有一頁
@@ -282,6 +288,25 @@ if not args.log:     # 不要顯示瀏覽器的 log 資訊
 
 driver = webdriver.Edge(options=options)
 
+# 加入博客來會員登入的 cookie
+# 首先開啟利用 cookie_editor 外掛從已登入的網頁匯出的 cookie
+# https://cookie-editor.com/
+# 要注意匯出的檔案中 cookie 的 sameSite 要改成 "None"
+# 否則會被 selenium 過濾無法加入
+with open('cookies.json') as f:
+    # 載入 cookie 成為字典
+    cookies = json.load(f)
+
+# 先開啟博客來網頁才能加入同一 domain 的 cookie
+driver.get('https://www.books.com.tw')
+
+# 將匯出的 cookie 全數加入
+for cookie in cookies:
+    # print(cookie['name'], cookie['sameSite'])
+    driver.add_cookie(cookie)
+
+# 重新開啟博客來網頁
+driver.refresh()
 
 # 論流取得排行榜的每一個分頁
 for page_no in range(site['pages']):
