@@ -3,3 +3,4 @@
 *.xlsx
 *.pyc
 cookies.json
+.vscode/
