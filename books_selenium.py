@@ -1,10 +1,13 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.edge.service import Service
+from webdriver_manager.microsoft import EdgeChromiumDriverManager
 import openpyxl
 import argparse
 import time
 import datetime
 import json
+import os
 
 def scroll_to_element(driver, element):
     driver.execute_script("arguments[0].scrollIntoView(false);", element)
@@ -286,7 +289,15 @@ if not args.log:     # 不要顯示瀏覽器的 log 資訊
     options.add_argument('--log-level=3')
     options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
-driver = webdriver.Edge(options=options)
+# driver = webdriver.Edge(options=options)
+# 因為微軟把 Web Driver 的下載網址從 msedgedriver.azureedge.net 改到 
+# msedgedriver.microsoft.com，所以要設定環境變數強制改到新網址下載
+os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"
+service = Service()
+driver = webdriver.Edge(
+    options=options,
+    service=service
+)
 
 # 加入博客來會員登入的 cookie
 # 首先開啟利用 cookie_editor 外掛從已登入的網頁匯出的 cookie
