@@ -2,12 +2,14 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
+from webdriver_manager.chrome import ChromeDriverManager
 import openpyxl
 import argparse
 import time
 import datetime
 import json
 import os
+import random
 
 def scroll_to_element(driver, element):
     driver.execute_script("arguments[0].scrollIntoView(false);", element)
@@ -15,13 +17,13 @@ def scroll_to_element(driver, element):
 # 等待指定秒數並顯示文字動畫
 animation = ['|', '/', '-', '\\']
 def wait_for_seconds(seconds):
+    print(f"Waiting for {seconds} seconds...")
     for i in range(seconds):
         print(animation[i % 4], end='\r')
         time.sleep(1)
     print()
 
 def go_books(book):
-    global driver
     title = book.text                  # 取得書名
     url = book.get_attribute('href')   # 取得單品頁連結
     rank = int(url[-3:])               # 單品頁網址的最後 3 碼是排名
@@ -29,10 +31,16 @@ def go_books(book):
 
     # 博客來排行版在 60 筆來回切換頁面後會讓 Edge 當掉, 
     # 目前測試等待 30 秒可以避開這個問題
-    if rank == 61:
-        wait_for_seconds(30)
-    book.click()                       # 點選書名連結
-    driver.implicitly_wait(2)          # 等待 2 秒
+    # if rank == 61:
+    #     wait_for_seconds(30)
+
+    wait_for_seconds(random.randint(15, 30))
+
+    driver = get_driver(browser='edge')
+
+    print(f"Getting URL: {url}")
+    driver.get(url)                       # 點選書名連結
+    driver.implicitly_wait(random.randint(1, 3))          # 等待 2 秒
 
     '''
     <!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
@@ -126,9 +134,10 @@ def go_books(book):
     if len(discount) == 1:          # 處理 5 折這樣的狀況        
         discount = discount + '0'   # 補 0
 
-    driver.back()
+    driver.close()
+    # driver.back()
     # time.sleep(1)
-    driver.implicitly_wait(2)
+    # driver.implicitly_wait(2)
 
     return rank, title, author, pub, price, discount, street_price, pub_date
 
@@ -275,54 +284,74 @@ if args.xlsx:
 site = sites[args.site]                # 要爬取排行榜的網站
 chart = site['charts'][args.period]    # 要爬取的排行榜
 
-options = webdriver.EdgeOptions()
-options.add_argument('--disable-extensions')
-
-if not args.browser: # 不要顯示瀏覽器畫面
-    options.add_argument('--headless')
-
-# 目前 headless 模式下，還是會顯示
-# DevTools listening on ws://127.0.0.1........
-# 似乎是這裡討論的問題
-# https://github.com/SeleniumHQ/selenium/issues/13095
-if not args.log:     # 不要顯示瀏覽器的 log 資訊
-    options.add_argument('--log-level=3')
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
-
 # driver = webdriver.Edge(options=options)
 # 因為微軟把 Web Driver 的下載網址從 msedgedriver.azureedge.net 改到 
 # msedgedriver.microsoft.com，所以要設定環境變數強制改到新網址下載
-os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"
-service = Service()
-driver = webdriver.Edge(
-    options=options,
-    service=service
-)
+
+
+def get_driver(browser='chrome'):
+    if browser == 'chrome':
+        options = webdriver.ChromeOptions()
+        service = Service(ChromeDriverManager().install())
+    elif browser == 'edge':
+        options = webdriver.EdgeOptions()
+        os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"
+        service = Service()
+        # service = Service(EdgeChromiumDriverManager().install())
+    # options.add_argument('--disable-extensions')
+    # options.add_argument('--disable-gpu')
+    # options.add_argument('--no-sandbox')
+    # options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-extensions')
+
+    if not args.browser: # 不要顯示瀏覽器畫面
+        # 無頭模式下，user-agent 會包含 "HeadlessChrome" 字樣
+        # 需要設定 user-agent 來偽裝成真實的瀏覽器
+        # 否則會被檢測為機器人，等在驗證頁面被阻擋
+        my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+        options.add_argument(f'--user-agent={my_user_agent}')
+        options.add_argument('--headless')
+
+    # 目前 headless 模式下，還是會顯示
+    # DevTools listening on ws://127.0.0.1........
+    # 似乎是這裡討論的問題
+    # https://github.com/SeleniumHQ/selenium/issues/13095
+    if not args.log:     # 不要顯示瀏覽器的 log 資訊
+        options.add_argument('--log-level=3')
+        options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    if browser == 'edge':
+        return webdriver.Edge(options=options, service=service)
+    else:
+        return webdriver.Chrome(options=options, service=service)
 
 # 加入博客來會員登入的 cookie
 # 首先開啟利用 cookie_editor 外掛從已登入的網頁匯出的 cookie
 # https://cookie-editor.com/
 # 要注意匯出的檔案中 cookie 的 sameSite 要改成 "None"
 # 否則會被 selenium 過濾無法加入
-with open('cookies.json') as f:
-    # 載入 cookie 成為字典
-    cookies = json.load(f)
+# with open('cookies.json') as f:
+#     # 載入 cookie 成為字典
+#     cookies = json.load(f)
 
 # 先開啟博客來網頁才能加入同一 domain 的 cookie
-driver.get('https://www.books.com.tw')
+# driver.get('https://www.books.com.tw')
 
 # 將匯出的 cookie 全數加入
-for cookie in cookies:
-    # print(cookie['name'], cookie['sameSite'])
-    driver.add_cookie(cookie)
+# for cookie in cookies:
+#     # print(cookie['name'], cookie['sameSite'])
+#     driver.add_cookie(cookie)
 
+# wait_for_seconds(random.randint(10, 30))
 # 重新開啟博客來網頁
-driver.refresh()
+# driver.refresh()
 
 # 論流取得排行榜的每一個分頁
 for page_no in range(site['pages']):
     url = chart['url'].format(page_no + 1)
-    driver.get(url)                      # 取得排行版 HTML 內容
+
+    driver = get_driver(browser='edge')
+    driver.get(url)                    # 取得排行版 HTML 內容
+    # driver.implicitly_wait(5)
     books = driver.find_elements(
         By.CSS_SELECTOR, chart['cssselector'])    # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
     num_books = len(books)
@@ -360,7 +389,7 @@ for page_no in range(site['pages']):
             sh['H' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
             sh['H' + str(rank)].number_format = 'YYYY/MM/DD'
 
-driver.close()
+    driver.close()
 
 if args.csv:
     f.close()
