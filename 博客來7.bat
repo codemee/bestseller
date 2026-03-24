@@ -1,3 +1,3 @@
 @echo off
-.\portablegit\bin\git pull
-.\python\python books_selenium.py books 7 -x
+call pre_process.bat
+uv run books_selenium.py books 7 -x

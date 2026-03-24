@@ -6,3 +6,4 @@ cookies.json
 .vscode/
 portablegit/
 __pycache__/
+.venv/

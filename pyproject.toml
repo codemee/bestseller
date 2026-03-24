@@ -1,0 +1,11 @@
+[project]
+name = "bestseller"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12.3"
+dependencies = [
+    "openpyxl==3.1.5",
+    "selenium==4.34.2",
+    "webdriver-manager==4.0.2",
+]

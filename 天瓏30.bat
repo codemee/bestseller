@@ -1,3 +1,3 @@
 @echo off
-.\portablegit\bin\git pull
-.\python\python best_seller.py tenlong 30 -x
+call pre_process.bat
+uv run best_seller.py tenlong 30 -x
