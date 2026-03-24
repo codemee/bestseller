@@ -17,9 +17,8 @@ def scroll_to_element(driver, element):
 # 等待指定秒數並顯示文字動畫
 animation = ['|', '/', '-', '\\']
 def wait_for_seconds(seconds):
-    print(f"Waiting for {seconds} seconds...")
-    for i in range(seconds):
-        print(animation[i % 4], end='\r')
+    for i in range(seconds, 0, -1):
+        print(f"Waiting for {i:02d} seconds...", end='\r')
         time.sleep(1)
     print()
 
