@@ -1,104 +1,108 @@
 # 書籍銷售排行榜爬蟲
 
-這是針對天瓏、博客來網站 7/30 天排行榜的 Python 爬蟲, 可以幫助您取得排行榜資料, 並切分為以下欄位：
+針對天瓏、博客來網站 7/30 天排行榜的 Python 爬蟲，可取得排行榜資料並切分為以下欄位：
 
 1. 排名
 2. 書名
 3. 作者
 4. 出版社
 5. 定價
-6. 出版日期
+6. 折扣
+7. 售價
+8. 出版日期
 
-這裡分為兩個工具程式：
+## 工具程式
 
-1. best_seller.py 
-2. books_selenium.py
-3. tenlong.py
+| 檔案 | 說明 |
+|------|------|
+| `books_selenium.py` | 主要爬蟲，以 Selenium 瀏覽器驅動抓取天瓏與博客來排行榜 |
+| `best_seller.py` | 舊版爬蟲，以 pyquery 直接抓取，目前僅支援天瓏 |
 
-使用時需要：
+## 環境需求
 
-- [pyquery](https://pypi.org/project/pyquery/) 模組
+本專案使用 [uv](https://docs.astral.sh/uv/) 管理 Python 環境。
 
-- [openpyxl](https://pypi.org/project/openpyxl/)模組
+若尚未安裝 uv 或 git，可執行 `pre_process.bat` 自動安裝（透過 [scoop](https://scoop.sh/)）。
+
+## books_selenium.py
+
+以 Selenium 控制 Edge 或 Chrome 瀏覽器抓取排行榜，可支援博客來及天瓏。
+
+### 用法
+
+```
+uv run books_selenium.py [-h] [-c] [-x] [-b] [-l] [-u {edge,chrome}] site period
+
+site        網站識別碼：books（博客來）、tenlong（天瓏）
+period      排行榜期間：7（週榜）、30（月榜）
+            博客來另支援：100_comp（年度電腦書百大）、100_art（年度藝術書百大）
+
+-h, --help              顯示使用說明
+-c, --csv               將結果存為 .csv 檔，檔名格式：{site}_{period}_YYYYMMDD.csv
+-x, --xlsx              將結果存為 .xlsx 檔，檔名格式：{site}_{period}_YYYYMMDD.xlsx
+-b, --browser           顯示瀏覽器視窗（預設：隱藏）
+-l, --log               顯示瀏覽器 log（預設：隱藏）
+-u, --use {edge,chrome} 指定使用的瀏覽器（預設：edge）
+```
+
+### 範例
+
+```bash
+# 抓取博客來 7 天排行榜並存為 Excel
+uv run books_selenium.py books 7 -x
+
+# 抓取天瓏 30 天排行榜，使用 Chrome
+uv run books_selenium.py tenlong 30 -x -u chrome
+
+# 顯示瀏覽器視窗以便除錯
+uv run books_selenium.py books 7 -b
+```
+
+### 擴充新網站
+
+各網站的爬取邏輯定義在 `sites/` 資料夾下，每個 `.py` 檔案需提供：
+
+- `sites` 字典：包含網站名稱、各排行榜的 URL、CSS 選擇器、頁數、每頁等待時間 (`wait_min`/`wait_max`)，以及 `digger` 函式
+- `digger` 函式：簽名為 `digger(book, driver)`，接收排行榜頁面上的書籍元素與 WebDriver 實例，回傳 `(rank, title, author, pub, price, discount, street_price, pub_date)`
+
+新增 `sites/新網站.py` 後無需修改主程式，`build_site_info()` 會自動載入。
 
 ## best_seller.py
 
-這個工具原本可以取得天瓏或是博客來的排行榜資料, 目前專責天瓏。用法如下：
+舊版工具，以 pyquery 直接抓取，目前僅支援天瓏排行榜。
 
 ```
-best_seller.py [-h] [-c] [-x] site period
+uv run best_seller.py [-h] [-c] [-x] site period
 
-- -h, --help   顯示使用說明頁
-- -c, --csv    將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.csv
-- -x, --xlsx   將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.xlsx
-site            {tenlong,books}, 指定查詢天瓏排行榜, books 為博客來, 現在已經不支援, 請改用 books_selenium.py
-period          {7,30}, 指定週或是月排行榜
+site    tenlong（天瓏）
+period  7 或 30
 ```
 
-由於博客來擋爬蟲的條件越來越嚴格, 所以博客來的排行榜另外改用 selenium 透過 Edge 瀏覽器處理：
+## 捷徑批次檔
 
-```
-books_selenium.py [-h] [-c] [-x] [-b] [-l] site period
+直接在檔案總管雙按執行即可，會自動更新程式碼並存為 Excel 檔：
 
-- -h, --help    顯示使用說明頁
-- -c, --csv     將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.csv
-- -x, --xlsx    將結果存檔, 檔名格式為 {tenlong,books}_{7,30}_YYYYMMDD_hhmm.xlsx
-- -l, --log     顯示 log, 預設不顯示, 在不顯示瀏覽器的情況下, 還是會顯示 "DevTools listening on ws://127.0.0.1..." 的訊息, 目前無解
-- -b, --browser 顯示瀏覽器視窗, 預設不顯示
-site            {tenlong,books}, 指定查詢天瓏排行榜, books 為博客來, 現在已經不支援, 請改用 books_selenium.py
-period          {7,30}, 指定週或是月排行榜
-```
+| 批次檔 | 功能 |
+|--------|------|
+| `天瓏7.bat` | 天瓏 7 天排行榜 |
+| `天瓏30.bat` | 天瓏 30 天排行榜 |
+| `博客來7.bat` | 博客來 7 天排行榜 |
+| `博客來30.bat` | 博客來 30 天排行榜 |
 
-### 捷徑版本的 DOS 批次檔
-
-為了方便一般使用者, 在倉庫中隨附上了已經安裝好相關模組的 3.12.3 版 Python, 並提供以下 DOS 批次檔作為使用的捷徑：
-
-- tenlong7.bat：擷取天瓏當週熱銷榜並儲存至 excel 檔案
-
-- tenlong30.bat：擷取天瓏當月熱銷榜並儲存至 excel 檔案
-
-- books7.bat：擷取博客來 7 天熱銷榜並儲存至 excel 檔案
-
-- books30.bat：擷取博客來 30 天熱銷榜並儲存至 excel 檔案
-
-使用時只要直接執行批次檔 (可在檔案總管中雙按執行) 即可。
-
-## tenlong.py
-
-這個工具可以依據指定的年份、月份以及月數, 抓取天瓏的月排行榜 (共 120 名) 之後加總積分排名, 積分計算方式如下：
-
-1. 當月第 1 名會得到積分 120 分, 第 120 名得到積分 1 分。
-
-1. 每本書會加總總積分以及累計上榜月數。
-
-最後再依據總積分排序列出所有在期間內曾上榜的書, 會列出總排名、總積分、上榜月數、書名、折扣後售價。
-
-使用方式如下：
-
-```
-tenlong.py [-y 年份] [-m 月份] [-p 月份] [-f]
-- -y 年份, 若不指定, 就是今年
-- -m 月份, 若不指定, 就是這個月份, 實際會從指定月份的前一個月開始往回統計
-- -p 月數, 要往回統計幾個月, 若不指定, 就是 12 個月
-- -f 若有加上此選項, 表示要將統計結果存檔, 不顯示在螢幕上。存檔時檔名固定為 sYYYY_MM_plus_月數.txt
-```
-
-舉例來說, 如果以如下選項執行：
-
-```
-python tenlong.py -y 2021 -m 1 -p 3 -f
-```
-
-就會從 2021/1 的前一個月, 也就是 2020/12 開始往回 3 個月, 統計 2020/10~2020/12 這 3 個月的資料, 並且存檔到 s_2020_10_plus_03.txt 中。
+所有批次檔執行前都會先呼叫 `pre_process.bat` 確認 uv 與 git 已安裝，並執行 `git pull` 更新程式碼。
 
 ## 實作說明
 
-博客來阻擋爬蟲的方式：
+### 博客來反爬蟲機制
 
-1. 針對非瀏覽器 (curl 或是 Python requests 模組) 連續 (無停頓) 存取網頁會採取回應逾時的方式阻擋, 目前測試約連續兩次就會被擋, 這時需要暫停約 20 秒鐘才能再度存取。
+1. 非瀏覽器（curl 或 requests）連續存取會被逾時封鎖，約連續兩次就會被擋，需暫停約 20 秒才能恢復。
+2. 持續存取會鎖 IP，回應為 200 但頁面內容為錯誤頁面。
+3. 無頭模式（headless）的 user-agent 包含 `HeadlessChrome` 字樣，會被識別為機器人後擋在驗證頁面，因此需手動設定 user-agent 偽裝成真實瀏覽器。
 
-2. 再繼續存取會鎖 IP, 會得到 200 的正常連線, 但取得的是一個顯示錯誤的頁面, 不是正確的內容。
+因此改用 Selenium 透過真實瀏覽器存取，並在每次載入單品頁前隨機等待 15～30 秒（設定於 `sites/books.py` 的 `wait_min`/`wait_max`）。
 
-為了應付以上問題, 還是乖乖地改用 selenium 透過瀏覽器存取博客來頁面, 不過仍會有從排行榜頁面循連結轉入單品頁取得詳細資料在返回爬行榜頁面來回 60 次後會導致 Edge 關閉, 目前測試只要暫停 30 秒後再繼續就可以正常運作。
+每個分頁使用獨立的 driver 載入排行榜頁面，每本書再另開一個獨立的 driver 取得單品頁資料，取完後關閉，避免長時間持有同一個瀏覽器實例造成不穩定。
 
-天瓏網站目前並沒有阻擋機制。
+### 天瓏
+
+天瓏目前無反爬蟲機制，每次等待 0～1 秒（設定於 `sites/tenlong.py`）。
