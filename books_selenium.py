@@ -35,7 +35,7 @@ def go_books(book):
 
     wait_for_seconds(random.randint(15, 30))
 
-    driver = get_driver(browser='edge')
+    driver = get_driver()
 
     print(f"Getting URL: {url}")
     driver.get(url)                       # 點選書名連結
@@ -258,6 +258,13 @@ parser.add_argument(
     action="store_true"
 )
 
+parser.add_argument(
+    '-u', '--use',
+    help="指定使用的瀏覽器 (預設：edge)",
+    choices=['edge', 'chrome'],
+    default='edge'
+)
+
 args = parser.parse_args()   # 解析命令列參數
 
 # 如果要將輸出結果存檔
@@ -287,38 +294,40 @@ chart = site['charts'][args.period]    # 要爬取的排行榜
 # 因為微軟把 Web Driver 的下載網址從 msedgedriver.azureedge.net 改到 
 # msedgedriver.microsoft.com，所以要設定環境變數強制改到新網址下載
 
+if args.use == 'chrome':
+    options = webdriver.ChromeOptions()
+    service = Service(ChromeDriverManager().install())
+elif args.use == 'edge':
+    options = webdriver.EdgeOptions()
+    os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"
+    service = Service()
+    # service = Service(EdgeChromiumDriverManager().install())
 
-def get_driver(browser='chrome'):
-    if browser == 'chrome':
-        options = webdriver.ChromeOptions()
-        service = Service(ChromeDriverManager().install())
-    elif browser == 'edge':
-        options = webdriver.EdgeOptions()
-        os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"
-        service = Service()
-        # service = Service(EdgeChromiumDriverManager().install())
-    # options.add_argument('--disable-extensions')
-    # options.add_argument('--disable-gpu')
-    # options.add_argument('--no-sandbox')
-    # options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-extensions')
+# options.add_argument('--disable-extensions')
+# options.add_argument('--disable-gpu')
+# options.add_argument('--no-sandbox')
+# options.add_argument('--disable-dev-shm-usage')
+options.add_argument('--disable-extensions')
 
-    if not args.browser: # 不要顯示瀏覽器畫面
-        # 無頭模式下，user-agent 會包含 "HeadlessChrome" 字樣
-        # 需要設定 user-agent 來偽裝成真實的瀏覽器
-        # 否則會被檢測為機器人，等在驗證頁面被阻擋
-        my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
-        options.add_argument(f'--user-agent={my_user_agent}')
-        options.add_argument('--headless')
+if not args.browser: # 不要顯示瀏覽器畫面
+    # 無頭模式下，user-agent 會包含 "HeadlessChrome" 字樣
+    # 需要設定 user-agent 來偽裝成真實的瀏覽器
+    # 否則會被檢測為機器人，等在驗證頁面被阻擋
+    my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+    options.add_argument(f'--user-agent={my_user_agent}')
+    options.add_argument('--headless')
 
-    # 目前 headless 模式下，還是會顯示
-    # DevTools listening on ws://127.0.0.1........
-    # 似乎是這裡討論的問題
-    # https://github.com/SeleniumHQ/selenium/issues/13095
-    if not args.log:     # 不要顯示瀏覽器的 log 資訊
-        options.add_argument('--log-level=3')
-        options.add_experimental_option('excludeSwitches', ['enable-logging'])
-    if browser == 'edge':
+# 目前 headless 模式下，還是會顯示
+# DevTools listening on ws://127.0.0.1........
+# 似乎是這裡討論的問題
+# https://github.com/SeleniumHQ/selenium/issues/13095
+if not args.log:     # 不要顯示瀏覽器的 log 資訊
+    options.add_argument('--log-level=3')
+    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+
+
+def get_driver():
+    if args.use == 'edge':
         return webdriver.Edge(options=options, service=service)
     else:
         return webdriver.Chrome(options=options, service=service)
@@ -348,7 +357,7 @@ def get_driver(browser='chrome'):
 for page_no in range(site['pages']):
     url = chart['url'].format(page_no + 1)
 
-    driver = get_driver(browser='edge')
+    driver = get_driver()
     driver.get(url)                    # 取得排行版 HTML 內容
     # driver.implicitly_wait(5)
     books = driver.find_elements(
