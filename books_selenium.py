@@ -1,41 +1,25 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.edge.service import Service
-from webdriver_manager.microsoft import EdgeChromiumDriverManager
 from webdriver_manager.chrome import ChromeDriverManager
 import openpyxl
 import argparse
 import time
 import datetime
-import json
 import os
 import random
 
-def scroll_to_element(driver, element):
-    driver.execute_script("arguments[0].scrollIntoView(false);", element)
-
-# 等待指定秒數並顯示文字動畫
-animation = ['|', '/', '-', '\\']
 def wait_for_seconds(seconds):
     for i in range(seconds, 0, -1):
         print(f"Waiting for {i:02d} seconds...", end='\r')
         time.sleep(1)
     print()
 
-def go_books(book):
+def go_books(book, driver):
     title = book.text                  # 取得書名
     url = book.get_attribute('href')   # 取得單品頁連結
     rank = int(url[-3:])               # 單品頁網址的最後 3 碼是排名
     url = url[:-15]                    # 單品頁網址的參數是博客來追蹤用使用者路徑使用, 不用留
-
-    # 博客來排行版在 60 筆來回切換頁面後會讓 Edge 當掉, 
-    # 目前測試等待 30 秒可以避開這個問題
-    # if rank == 61:
-    #     wait_for_seconds(30)
-
-    wait_for_seconds(random.randint(15, 30))
-
-    driver = get_driver()
 
     print(f"Getting URL: {url}")
     driver.get(url)                       # 點選書名連結
@@ -133,47 +117,10 @@ def go_books(book):
     if len(discount) == 1:          # 處理 5 折這樣的狀況        
         discount = discount + '0'   # 補 0
 
-    driver.close()
-    # driver.back()
-    # time.sleep(1)
-    # driver.implicitly_wait(2)
-
     return rank, title, author, pub, price, discount, street_price, pub_date
 
 # 各網站排行版資料
 sites = {
-    # 每個排行榜的資料結構如下：
-    # '網站識別名稱 (自取)': {
-    #    'name': '網站完整名稱',
-    #    'charts': {
-    #       '排行榜識別代號': {
-    #            'name': '排行榜完整名稱',
-    #           'url': '排行榜網址',
-    #           'cssselector': '單本書在網頁內的 CSS 選擇器'
-    #       },
-    #    }
-    #    'pages': 排行榜的頁數,
-    #    'digger': 從排行榜單本書元素再取出單品頁找出細項資料的函式
-    # }
-
-    # 天瓏仍然沿用原本的 pyquery 版本    
-    # 'tenlong': { # 天瓏排行榜的資料
-    #     'name': '天瓏書局',
-    #     'charts': {
-    #         '30':{
-    #             'name': '天瓏 30 天排行榜',
-    #             'url':'https://www.tenlong.com.tw/zh_tw/recent_bestselling?page={:d}&range=30',
-    #             'cssselector':'.single-book'
-    #         },                                      
-    #         '7':{
-    #             'name': '天瓏 7 天排行榜',
-    #             'url':'https://www.tenlong.com.tw/zh_tw/recent_bestselling?page={:d}&range=7',
-    #             'cssselector':'.single-book'
-    #         },
-    #     },                              
-    #     'pages':4,             # 分成 4 頁
-    #     'digger':go_tenlong,   # 取出天瓏單品頁內各項資料的函式
-    # },
     'books': { # 博客來排行榜的資料
         'name': '博客來網路書店',
         'charts': {
@@ -203,73 +150,75 @@ sites = {
     }
 }
 
-site_names = ''          # 取得所有的網站識別名稱與完整名稱
-site_keys = sites.keys() # 取得所有網站的代碼
-chart_names = ''         # 取得所有排行榜的代碼與完整名稱
-chart_keys = set()       # 取得所有排行榜的代碼
+site_names = ''
+site_keys = None
+chart_names = ''
+chart_keys = set()
 
-for key_site in sites:
-    site = sites[key_site]
-    site_names += "{:10}：{}\n".format(key_site, site['name'])
-    chart_names += "{}：\n".format(site['name'])
-    for key_chart in site['charts']:
-        chart = site['charts'][key_chart]
-        chart_keys.add(key_chart)
-        chart_names += "\t{:3}：{}\n".format(key_chart, chart['name'])
+def build_site_info():
+    global site_names, site_keys, chart_names, chart_keys
+    site_keys = sites.keys()
+    for key_site in sites:
+        site = sites[key_site]
+        site_names += "{:10}：{}\n".format(key_site, site['name'])
+        chart_names += "{}：\n".format(site['name'])
+        for key_chart in site['charts']:
+            chart = site['charts'][key_chart]
+            chart_keys.add(key_chart)
+            chart_names += "\t{:3}：{}\n".format(key_chart, chart['name'])
 
-parser = argparse.ArgumentParser(
-    description="抓取天瓏/博客來電腦書熱銷排行榜資料",
-    formatter_class=argparse.RawTextHelpFormatter
-)
+args = None
 
-parser.add_argument(
-    'site', 
-    help=f"網站識別名稱, 可用的網站識別名稱如下：\n{site_names}\n",
-    choices=site_keys
-)
+def parse_args():
+    global args
+    parser = argparse.ArgumentParser(
+        description="抓取天瓏/博客來電腦書熱銷排行榜資料",
+        formatter_class=argparse.RawTextHelpFormatter
+    )
+    parser.add_argument(
+        'site',
+        help=f"網站識別名稱, 可用的網站識別名稱如下：\n{site_names}\n",
+        choices=site_keys
+    )
+    parser.add_argument(
+        'period',
+        help=f"期間代號, 可用的代號如下：\n{chart_names}\n",
+        choices=list(chart_keys)
+    )
+    parser.add_argument(
+        '-c', '--csv',
+        help="將資料儲存到 .csv 檔",
+        action="store_true"
+    )
+    parser.add_argument(
+        '-x', '--xlsx',
+        help="將資料儲存到 .xlsx 檔",
+        action="store_true"
+    )
+    parser.add_argument(
+        '-b', '--browser',
+        help="顯示瀏覽器視窗",
+        action="store_true"
+    )
+    parser.add_argument(
+        '-l', '--log',
+        help="顯示瀏覽器的 log 資訊",
+        action="store_true"
+    )
+    parser.add_argument(
+        '-u', '--use',
+        help="指定使用的瀏覽器 (預設：edge)",
+        choices=['edge', 'chrome'],
+        default='edge'
+    )
+    args = parser.parse_args()
 
-parser.add_argument(
-    'period', 
-    help=f"期間代號, 可用的代號如下：\n{chart_names}\n",
-    choices=list(chart_keys)
-)
+f = None
+wb = None
+sh = None
 
-parser.add_argument(
-    '-c', '--csv', 
-    help="將資料儲存到 .csv 檔",
-    action="store_true"
-)
-
-parser.add_argument(
-    '-x', '--xlsx', 
-    help="將資料儲存到 .xlsx 檔",
-    action="store_true"
-)
-
-parser.add_argument(
-    '-b', '--browser', 
-    help="顯示瀏覽器視窗",
-    action="store_true"
-)
-
-parser.add_argument(
-    '-l', '--log', 
-    help="顯示瀏覽器的 log 資訊",
-    action="store_true"
-)
-
-parser.add_argument(
-    '-u', '--use',
-    help="指定使用的瀏覽器 (預設：edge)",
-    choices=['edge', 'chrome'],
-    default='edge'
-)
-
-args = parser.parse_args()   # 解析命令列參數
-
-# 如果要將輸出結果存檔
-if args.csv:
-    # 利用目前時間組成 books_7_20210721_1331.csv 格式的檔名
+def create_csv_file():
+    global f
     ts = time.localtime()
     fname = '{}_{}_{:4d}{:02d}{:02d}.csv'.format(
         args.site,
@@ -278,52 +227,49 @@ if args.csv:
         ts.tm_mon,
         ts.tm_mday
     )
-    # 建立檔案
     f = open(fname, 'w', encoding='utf-8')
 
-# 如果要將輸出結果存檔
-if args.xlsx:
-    # 建立空的試算表
+def create_spreadsheet_file():
+    global wb, sh
     wb = openpyxl.workbook.Workbook()
     sh = wb.active
 
-site = sites[args.site]                # 要爬取排行榜的網站
-chart = site['charts'][args.period]    # 要爬取的排行榜
+options = None
+service = None
 
-# driver = webdriver.Edge(options=options)
-# 因為微軟把 Web Driver 的下載網址從 msedgedriver.azureedge.net 改到 
-# msedgedriver.microsoft.com，所以要設定環境變數強制改到新網址下載
+def config_webdriver():
+    global options, service
+    if args.use == 'chrome':
+        options = webdriver.ChromeOptions()
+        service = Service(ChromeDriverManager().install())
+    elif args.use == 'edge':
+        # 因為微軟把 Web Driver 的下載網址從 msedgedriver.azureedge.net 改到
+        # msedgedriver.microsoft.com，所以要設定環境變數強制改到新網址下載
+        options = webdriver.EdgeOptions()
+        os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"
+        service = Service()
 
-if args.use == 'chrome':
-    options = webdriver.ChromeOptions()
-    service = Service(ChromeDriverManager().install())
-elif args.use == 'edge':
-    options = webdriver.EdgeOptions()
-    os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"
-    service = Service()
-    # service = Service(EdgeChromiumDriverManager().install())
+    # options.add_argument('--disable-extensions')
+    # options.add_argument('--disable-gpu')
+    # options.add_argument('--no-sandbox')
+    # options.add_argument('--disable-dev-shm-usage')
+    options.add_argument('--disable-extensions')
 
-# options.add_argument('--disable-extensions')
-# options.add_argument('--disable-gpu')
-# options.add_argument('--no-sandbox')
-# options.add_argument('--disable-dev-shm-usage')
-options.add_argument('--disable-extensions')
+    if not args.browser: # 不要顯示瀏覽器畫面
+        # 無頭模式下，user-agent 會包含 "HeadlessChrome" 字樣
+        # 需要設定 user-agent 來偽裝成真實的瀏覽器
+        # 否則會被檢測為機器人，等在驗證頁面被阻擋
+        my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
+        options.add_argument(f'--user-agent={my_user_agent}')
+        options.add_argument('--headless')
 
-if not args.browser: # 不要顯示瀏覽器畫面
-    # 無頭模式下，user-agent 會包含 "HeadlessChrome" 字樣
-    # 需要設定 user-agent 來偽裝成真實的瀏覽器
-    # 否則會被檢測為機器人，等在驗證頁面被阻擋
-    my_user_agent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
-    options.add_argument(f'--user-agent={my_user_agent}')
-    options.add_argument('--headless')
-
-# 目前 headless 模式下，還是會顯示
-# DevTools listening on ws://127.0.0.1........
-# 似乎是這裡討論的問題
-# https://github.com/SeleniumHQ/selenium/issues/13095
-if not args.log:     # 不要顯示瀏覽器的 log 資訊
-    options.add_argument('--log-level=3')
-    options.add_experimental_option('excludeSwitches', ['enable-logging'])
+    # 目前 headless 模式下，還是會顯示
+    # DevTools listening on ws://127.0.0.1........
+    # 似乎是這裡討論的問題
+    # https://github.com/SeleniumHQ/selenium/issues/13095
+    if not args.log:     # 不要顯示瀏覽器的 log 資訊
+        options.add_argument('--log-level=3')
+        options.add_experimental_option('excludeSwitches', ['enable-logging'])
 
 
 def get_driver():
@@ -332,85 +278,105 @@ def get_driver():
     else:
         return webdriver.Chrome(options=options, service=service)
 
-# 加入博客來會員登入的 cookie
-# 首先開啟利用 cookie_editor 外掛從已登入的網頁匯出的 cookie
-# https://cookie-editor.com/
-# 要注意匯出的檔案中 cookie 的 sameSite 要改成 "None"
-# 否則會被 selenium 過濾無法加入
-# with open('cookies.json') as f:
-#     # 載入 cookie 成為字典
-#     cookies = json.load(f)
 
-# 先開啟博客來網頁才能加入同一 domain 的 cookie
-# driver.get('https://www.books.com.tw')
+def main():
+    build_site_info()
+    parse_args()
 
-# 將匯出的 cookie 全數加入
-# for cookie in cookies:
-#     # print(cookie['name'], cookie['sameSite'])
-#     driver.add_cookie(cookie)
+    if args.csv:
+        create_csv_file()
+    if args.xlsx:
+        create_spreadsheet_file()
 
-# wait_for_seconds(random.randint(10, 30))
-# 重新開啟博客來網頁
-# driver.refresh()
+    site = sites[args.site]             # 要爬取排行榜的網站
+    chart = site['charts'][args.period] # 要爬取的排行榜
 
-# 論流取得排行榜的每一個分頁
-for page_no in range(site['pages']):
-    url = chart['url'].format(page_no + 1)
+    config_webdriver()
 
-    driver = get_driver()
-    driver.get(url)                    # 取得排行版 HTML 內容
-    # driver.implicitly_wait(5)
-    books = driver.find_elements(
-        By.CSS_SELECTOR, chart['cssselector'])    # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
-    num_books = len(books)
-    for num in range(num_books):                  # 處理每一本書
-        book = driver.find_elements(              # 取得排行榜上第 num 本書
-            By.CSS_SELECTOR, 
-            chart['cssselector'])[num]            # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
-        # if num != 79:                             # 除錯用, 只顯示某一本書
-        #     continue
-        rank, title, author, pub, price, discount, street_price, pub_date = site['digger'](book)
-        # 建立以 tab 區隔欄位的一筆資料
-        fmt_str = "{:d}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\n".format( 
-            rank,                                 # 排名
-            title,                                # 書名
-            author,                               # 作者
-            pub,                                  # 出版社
-            price,                                # 定價
-            discount,                             # 折扣
-            street_price,                         # 售價
-            pub_date                              # 出版日期
+    # 加入博客來會員登入的 cookie
+    # 首先開啟利用 cookie_editor 外掛從已登入的網頁匯出的 cookie
+    # https://cookie-editor.com/
+    # 要注意匯出的檔案中 cookie 的 sameSite 要改成 "None"
+    # 否則會被 selenium 過濾無法加入
+    # with open('cookies.json') as f:
+    #     cookies = json.load(f)
+
+    # 先開啟博客來網頁才能加入同一 domain 的 cookie
+    # driver.get('https://www.books.com.tw')
+
+    # 將匯出的 cookie 全數加入
+    # for cookie in cookies:
+    #     driver.add_cookie(cookie)
+
+    # wait_for_seconds(random.randint(10, 30))
+    # 重新開啟博客來網頁
+    # driver.refresh()
+
+    # 輪流取得排行榜的每一個分頁
+    for page_no in range(site['pages']):
+        url = chart['url'].format(page_no + 1)
+
+        driver = get_driver()
+        driver.get(url)   # 取得排行版 HTML 內容
+        # driver.implicitly_wait(5)
+        books = driver.find_elements(
+            # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
+            By.CSS_SELECTOR, chart['cssselector'])
+        num_books = len(books)
+        for num in range(num_books):    # 處理每一本書
+            book = driver.find_elements(
+                By.CSS_SELECTOR,
+                chart['cssselector'])[num]
+            wait_for_seconds(random.randint(15, 30))
+            book_driver = get_driver()
+            (rank, title, author, pub, price, discount, street_price, pub_date) = (
+                site['digger'](book, book_driver)
+            )
+            book_driver.close()
+            # 建立以 tab 區隔欄位的一筆資料
+            fmt_str = "{:d}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\n".format(
+                rank,           # 排名
+                title,          # 書名
+                author,         # 作者
+                pub,            # 出版社
+                price,          # 定價
+                discount,       # 折扣
+                street_price,   # 售價
+                pub_date        # 出版日期
+            )
+            print(fmt_str, end='')      # 顯示每一本書的資料
+            if args.csv:
+                f.write(fmt_str)
+
+            # 使用 openpyxl 寫入 excel 檔
+            if args.xlsx:
+                sh['A' + str(rank)].value = int(rank)
+                sh['B' + str(rank)].value = title
+                sh['C' + str(rank)].value = author
+                sh['D' + str(rank)].value = pub
+                sh['E' + str(rank)].value = int(price)
+                sh['F' + str(rank)].value = float(discount)
+                sh['G' + str(rank)].value = int(street_price)
+                sh['H' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
+                sh['H' + str(rank)].number_format = 'YYYY/MM/DD'
+
+        driver.close()
+
+    if args.csv:
+        f.close()
+
+    if args.xlsx:
+        ts = time.localtime()
+        fname = '{}_{}_{:4d}{:02d}{:02d}.xlsx'.format(
+            args.site,
+            args.period,
+            ts.tm_year,
+            ts.tm_mon,
+            ts.tm_mday
         )
-        print(fmt_str, end='')                    # 顯示每一本書的資料
-        if args.csv:
-            f.write(fmt_str)
+        wb.save(fname)
+        wb.close()
 
-        # 使用 openpyxl 寫入 excel 檔
-        if args.xlsx:
-            sh['A' + str(rank)].value = int(rank)
-            sh['B' + str(rank)].value = title
-            sh['C' + str(rank)].value = author
-            sh['D' + str(rank)].value = pub
-            sh['E' + str(rank)].value = int(price)
-            sh['F' + str(rank)].value = float(discount)
-            sh['G' + str(rank)].value = int(street_price)
-            sh['H' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
-            sh['H' + str(rank)].number_format = 'YYYY/MM/DD'
 
-    driver.close()
-
-if args.csv:
-    f.close()
-
-if args.xlsx:
-    # 利用目前時間組成 books_7_20210721_1331.xlsx 格式的檔名
-    ts = time.localtime()
-    fname = '{}_{}_{:4d}{:02d}{:02d}.xlsx'.format(
-        args.site,
-        args.period,
-        ts.tm_year,
-        ts.tm_mon,
-        ts.tm_mday
-    )
-    wb.save(fname)
-    wb.close()
+if __name__ == '__main__':
+    main()
