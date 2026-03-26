@@ -206,10 +206,11 @@ def main():
                 chart['cssselector'])[num]
             wait_for_seconds(random.randint(site['wait_min'], site['wait_max']))
             book_driver = get_driver()
-            (rank, title, author, pub, price, discount, street_price, pub_date) = (
-                site['digger'](book, book_driver)
-            )
+            result = site['digger'](book, book_driver)
             book_driver.close()
+            if result is None:
+                continue
+            (rank, title, author, pub, price, discount, street_price, pub_date) = result
             # 建立以 tab 區隔欄位的一筆資料
             fmt_str = "{:d}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\n".format(
                 rank,           # 排名
@@ -256,4 +257,7 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\n使用者中斷程式")

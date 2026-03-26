@@ -35,36 +35,41 @@ def go_tenlong(book, driver):
     url = 'https://www.tenlong.com.tw/products/{:s}?list_name=r-zh_tw'.format(isbn)
     driver.get(url)
 
-    author = driver.find_element(By.CSS_SELECTOR, '.item-author').text
+    try:
+        author = driver.find_element(By.CSS_SELECTOR, '.item-author').text
 
-    infos_a = driver.find_elements(By.CSS_SELECTOR, '.info-content a')
-    pub = infos_a[0].text
+        infos_a = driver.find_elements(By.CSS_SELECTOR, '.info-content a')
+        pub = infos_a[0].text
 
-    infos = driver.find_elements(By.CSS_SELECTOR, '.info-content')
-    if infos[2].text.strip():
-        street_price = price = infos[2].text
-    else:
-        street_price = price = infos[1].text
+        infos = driver.find_elements(By.CSS_SELECTOR, '.info-content')
+        if infos[2].text.strip():
+            street_price = price = infos[2].text
+        else:
+            street_price = price = infos[1].text
 
-    discount = '100'
-    prices = driver.find_elements(By.CSS_SELECTOR, '.info-content .pricing')
-    if len(prices) > 1:
-        street_price = prices[1].text
-        discount = prices[0].text
-    else:
-        price = prices[0].text
+        discount = '100'
+        prices = driver.find_elements(By.CSS_SELECTOR, '.info-content .pricing')
+        if len(prices) > 1:
+            street_price = prices[1].text
+            discount = prices[0].text
+        else:
+            price = prices[0].text
 
-    price = price[1:].replace(',', '')
-    street_price = street_price[1:].replace(',', '')
-    discount = discount.replace('.', '')
-    if discount == '100':
-        street_price = price
+        price = price[1:].replace(',', '')
+        street_price = street_price[1:].replace(',', '')
+        discount = discount.replace('.', '')
+        if discount == '100':
+            street_price = price
 
-    pub_date = infos[1].text.replace('-', '/')
-    if '/' not in pub_date:
-        pub_date = ''
+        pub_date = infos[1].text.replace('-', '/')
+        if '/' not in pub_date:
+            pub_date = ''
 
-    return rank, title, author, pub, price, discount, street_price, pub_date
+        return rank, title, author, pub, price, discount, street_price, pub_date
+
+    except Exception as e:
+        print(f"[錯誤] 解析網頁失敗 (排名 {rank}, {title}, {url}): {e}")
+        return None
 
 
 sites = {
