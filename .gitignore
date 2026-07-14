@@ -2,6 +2,7 @@
 *.csv
 *.xlsx
 *.pyc
+.env
 cookies.json
 .vscode/
 portablegit/

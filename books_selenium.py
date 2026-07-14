@@ -1,6 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.edge.service import Service
+from selenium.webdriver.chrome.service import Service as ChromeService
+from selenium.webdriver.edge.service import Service as EdgeService
 from webdriver_manager.chrome import ChromeDriverManager
 import openpyxl
 import argparse
@@ -10,6 +11,8 @@ import time
 import datetime
 import os
 import random
+import platform
+import shutil
 
 import sites as sites_pkg
 
@@ -115,19 +118,51 @@ def config_webdriver():
     global options, service
     if args.use == 'chrome':
         options = webdriver.ChromeOptions()
-        service = Service(ChromeDriverManager().install())
+        driver_path = (
+            shutil.which('chromedriver')
+            or shutil.which('chromium.chromedriver')
+        )
+        browser_path = (
+            shutil.which('google-chrome')
+            or shutil.which('google-chrome-stable')
+            or shutil.which('chromium')
+            or shutil.which('chromium-browser')
+        )
+
+        snap_browser_path = '/snap/chromium/current/usr/lib/chromium-browser/chrome'
+        if (
+            driver_path
+            and driver_path.endswith('chromium.chromedriver')
+            and os.path.exists(snap_browser_path)
+        ):
+            browser_path = snap_browser_path
+
+        if browser_path:
+            options.binary_location = browser_path
+
+        if driver_path:
+            service = ChromeService(executable_path=driver_path)
+        elif platform.system() == 'Linux' and platform.machine() in ('aarch64', 'arm64'):
+            raise RuntimeError(
+                'Linux ARM64 找不到 ChromeDriver；請安裝與 Chromium 版本相符的 '
+                'chromedriver（Ubuntu Snap 可使用 chromium.chromedriver）。'
+            )
+        else:
+            service = ChromeService(ChromeDriverManager().install())
     elif args.use == 'edge':
         # 因為微軟把 Web Driver 的下載網址從 msedgedriver.azureedge.net 改到
         # msedgedriver.microsoft.com，所以要設定環境變數強制改到新網址下載
         options = webdriver.EdgeOptions()
         os.environ["SE_DRIVER_MIRROR_URL"] = "https://msedgedriver.microsoft.com"
-        service = Service()
+        service = EdgeService()
 
     # options.add_argument('--disable-extensions')
     # options.add_argument('--disable-gpu')
     # options.add_argument('--no-sandbox')
     # options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--disable-extensions')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
 
     if not args.browser: # 不要顯示瀏覽器畫面
         # 無頭模式下，user-agent 會包含 "HeadlessChrome" 字樣

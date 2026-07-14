@@ -17,12 +17,15 @@
 |------|------|
 | `books_selenium.py` | 主要爬蟲，以 Selenium 瀏覽器驅動抓取天瓏與博客來排行榜 |
 | `best_seller.py` | 舊版爬蟲，以 pyquery 直接抓取，目前僅支援天瓏 |
+| `send_excel_email.py` | 將最新日期的排行榜 Excel 透過 Gmail 寄給多位收件者 |
 
 ## 環境需求
 
 本專案使用 [uv](https://docs.astral.sh/uv/) 管理 Python 環境。
 
-若尚未安裝 uv 或 git，可執行 `pre_process.bat` 自動安裝（透過 [scoop](https://scoop.sh/)）。
+Windows 可執行 `pre_process.bat` 透過 [Scoop](https://scoop.sh/) 安裝缺少的 uv 或 git。Linux 與 macOS 使用 `pre_process.sh`，缺少工具時會優先透過 [Homebrew](https://brew.sh/)安裝。
+
+Linux ARM64 會優先使用系統中的 Chromium 與 ChromeDriver；Ubuntu Snap 安裝的 `chromium.chromedriver` 亦受支援。
 
 ## books_selenium.py
 
@@ -78,9 +81,45 @@ site    tenlong（天瓏）
 period  7 或 30
 ```
 
-## 捷徑批次檔
+## 透過 Gmail 寄送 Excel
 
-直接在檔案總管雙按執行即可，會自動更新程式碼並存為 Excel 檔：
+將 `.env.example` 複製為 `.env`，填入 Gmail 帳號、Google 應用程式密碼與收件人：
+
+```dotenv
+GMAIL_ADDRESS=sender@gmail.com
+GMAIL_APP_PASSWORD=xxxx xxxx xxxx xxxx
+EMAIL_RECIPIENTS=recipient1@example.com,recipient2@example.com
+```
+
+多位收件者以逗號分隔，同一封信會寄給所有列出的地址。
+
+請使用啟用兩步驟驗證後建立的應用程式密碼，不要使用 Gmail 的一般登入密碼。
+
+先試跑確認附件：
+
+```bash
+uv run send_excel_email.py --dry-run
+```
+
+正式寄送：
+
+```bash
+uv run send_excel_email.py
+```
+
+也可在指令後指定其他資料夾。程式會解析 `*_YYYYMMDD.xlsx`，將日期最新一天的所有 Excel 附在同一封信中。
+
+完整執行天瓏 7 日、博客來 7 日排行榜並寄出最新 Excel：
+
+```bash
+./排行榜7.sh
+```
+
+腳本會依序執行三個步驟；任一步失敗就會停止，不會寄出不完整的結果。
+
+## 排行榜捷徑
+
+Windows 可在檔案總管雙按批次檔，執行排行榜並存為 Excel：
 
 | 批次檔 | 功能 |
 |--------|------|
@@ -89,7 +128,19 @@ period  7 或 30
 | `博客來7.bat` | 博客來 7 天排行榜 |
 | `博客來30.bat` | 博客來 30 天排行榜 |
 
-所有批次檔執行前都會先呼叫 `pre_process.bat` 確認 uv 與 git 已安裝，並執行 `git pull` 更新程式碼。
+批次檔執行前會先呼叫 `pre_process.bat` 檢查 uv 與 git。
+
+Linux 與 macOS 可使用對應的 shell 腳本：
+
+| Shell 腳本 | 功能 |
+|------------|------|
+| `天瓏7.sh` | 天瓏 7 天排行榜 |
+| `天瓏30.sh` | 天瓏 30 天排行榜 |
+| `博客來7.sh` | 博客來 7 天排行榜 |
+| `博客來30.sh` | 博客來 30 天排行榜 |
+| `排行榜7.sh` | 依序產生天瓏與博客來 7 天排行榜，再透過 Gmail 寄出 |
+
+Shell 腳本執行前會呼叫 `pre_process.sh` 檢查 uv 與 git；缺少工具時優先使用 Homebrew 安裝。
 
 ## 實作說明
 
