@@ -121,6 +121,11 @@ def config_webdriver():
         driver_path = (
             shutil.which('chromedriver')
             or shutil.which('chromium.chromedriver')
+            or (
+                '/snap/bin/chromium.chromedriver'
+                if os.path.exists('/snap/bin/chromium.chromedriver')
+                else None
+            )
         )
         browser_path = (
             shutil.which('google-chrome')
