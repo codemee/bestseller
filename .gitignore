@@ -4,6 +4,7 @@
 *.pyc
 .env
 cookies.json
+.tenlong_*.checkpoint.json
 .vscode/
 portablegit/
 __pycache__/

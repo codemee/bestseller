@@ -4,6 +4,30 @@ import argparse
 import time
 import datetime
 import random
+import json
+import os
+from pathlib import Path
+
+from tenlong_http import RateLimitedSession
+
+TENLONG_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+    ),
+    "Accept-Language": "zh-TW,zh;q=0.9,en;q=0.8",
+}
+TENLONG_EXPECTED_RANKS = set(range(1, 101))
+tenlong_http = RateLimitedSession()
+
+
+def fetch_tenlong(url, referer=None):
+    headers = dict(TENLONG_HEADERS)
+    if referer:
+        headers["Referer"] = referer
+    response = tenlong_http.get(url, headers=headers)
+    return pq(response.text)
+
 
 def go_tenlong(book):
     '''
@@ -28,14 +52,10 @@ def go_tenlong(book):
     '''
     isbn = book.find('a').attrib['href'][10:23]                 # 從單品頁網址中取得 ISBN 號碼
     title = book.find('strong').find('a').attrib['title']       # 取得書名
-    span = book.find('a').find('span')                          # 找到包含排行榜名次的元素
-    while span is not None and span.attrib['class'] != 'rank':
-        span = span.getnext()
-    rank = 0
-    if span is not None:
-        rank = int(span.text)                                   # 取得名次數值
+    rank_text = pq(book)('.rank').text()
+    rank = int(rank_text) if rank_text else 0                   # 取得名次數值
     url = 'https://www.tenlong.com.tw/products/{:s}?list_name=r-zh_tw'.format(isbn)
-    page_book = pq(url=url)                       # 取得單品頁
+    page_book = fetch_tenlong(url)                # 取得單品頁
     '''
     單品頁內個書籍料如下：
 
@@ -276,22 +296,77 @@ if args.xlsx:
 # 設定亂數種子初始值
 random.seed()
 
-# 瀏覽器識別字串
-headers = {
-    'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:84.0) Gecko/20100101 Firefox/84.0'
-}
-
 site = sites[args.site]                # 要爬取排行榜的網站
 chart = site['charts'][args.period]    # 要爬取的排行榜
+
+# 天瓏若中途失敗，保留當天已完成的資料供下次續跑。
+ts = time.localtime()
+date_stamp = f"{ts.tm_year:04d}{ts.tm_mon:02d}{ts.tm_mday:02d}"
+checkpoint_path = Path(f".{args.site}_{args.period}_{date_stamp}.checkpoint.json")
+completed_rows = {}
+if args.site == "tenlong" and args.xlsx and checkpoint_path.exists():
+    try:
+        saved_rows = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+        completed_rows = {int(row[0]): row for row in saved_rows}
+        print(f"從 checkpoint 繼續，已完成 {len(completed_rows)} 筆。", flush=True)
+    except (OSError, ValueError, TypeError, IndexError):
+        print(f"警告：無法讀取 {checkpoint_path}，將重新抓取。", flush=True)
+        completed_rows = {}
+
+
+def write_xlsx_row(row):
+    rank, title, author, pub, price, discount, street_price, pub_date = row
+    sh[f"A{rank}"].value = int(rank)
+    sh[f"B{rank}"].value = title
+    sh[f"C{rank}"].value = author
+    sh[f"D{rank}"].value = pub
+    sh[f"E{rank}"].value = int(price)
+    sh[f"F{rank}"].value = float(discount)
+    sh[f"G{rank}"].value = int(street_price)
+    if pub_date:
+        sh[f"H{rank}"].value = datetime.datetime.strptime(pub_date, "%Y/%m/%d")
+        sh[f"H{rank}"].number_format = "YYYY/MM/DD"
+
+
+def save_checkpoint():
+    temporary = checkpoint_path.with_suffix(checkpoint_path.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps(
+            [completed_rows[key] for key in sorted(completed_rows)],
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+    os.replace(temporary, checkpoint_path)
+
+
+if args.xlsx:
+    for saved_row in completed_rows.values():
+        write_xlsx_row(saved_row)
 
 # 論流取得排行榜的每一個分頁
 for page_no in range(site['pages']):
     url = chart['url'].format(page_no + 1)
-    headers['referer'] = url
-    page = pq(url=url, headers=headers)               # 取得排行版 HTML 內容
+    page = fetch_tenlong(url)                         # 取得排行榜 HTML 內容
     books = page(chart['cssselector'])            # 排行榜上每一本書都具有同樣的 CSS 選擇器類別
     for book in books:                            # 處理每一本書
+        rank_text = pq(book)(".rank").text()
+        # 頁面尾端可能有同樣使用 .single-book、但不屬於排行榜的推薦項目。
+        if not rank_text:
+            continue
+        listed_rank = int(rank_text)
+        if listed_rank in completed_rows:
+            continue
         rank, title, author, pub, price, discount, street_price, pub_date = site['digger'](book)
+        # 排行頁的名次是權威來源；避免單品解析差異導致 Excel 第 0 列錯誤。
+        rank = listed_rank
+        if rank not in TENLONG_EXPECTED_RANKS:
+            raise RuntimeError(f"天瓏排行榜名次無效：{rank!r}")
+        row = [rank, title, author, pub, price, discount, street_price, pub_date]
+        if args.site == "tenlong" and args.xlsx:
+            completed_rows[rank] = row
+            write_xlsx_row(row)
+            save_checkpoint()
         # 建立以 tab 區隔欄位的一筆資料
         fmt_str = "{:d}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\t{:s}\n".format( 
             rank,                                 # 排名
@@ -307,18 +382,18 @@ for page_no in range(site['pages']):
         if args.csv:
             f.write(fmt_str)
 
-        # 使用 openpyxl 寫入 excel 檔
-        if args.xlsx:
-            sh['A' + str(rank)].value = int(rank)
-            sh['B' + str(rank)].value = title
-            sh['C' + str(rank)].value = author
-            sh['D' + str(rank)].value = pub
-            sh['E' + str(rank)].value = int(price)
-            sh['F' + str(rank)].value = float(discount)
-            sh['G' + str(rank)].value = int(street_price)
-            if pub_date:
-                sh['H' + str(rank)].value = datetime.datetime.strptime(pub_date, '%Y/%m/%d')
-                sh['H' + str(rank)].number_format = 'YYYY/MM/DD'
+        # 非 checkpoint 模式仍直接寫入 Excel。
+        if args.xlsx and args.site != "tenlong":
+            write_xlsx_row(row)
+
+if args.site == "tenlong" and args.xlsx:
+    missing_ranks = sorted(TENLONG_EXPECTED_RANKS - completed_rows.keys())
+    if missing_ranks:
+        preview = ", ".join(map(str, missing_ranks[:10]))
+        raise RuntimeError(
+            f"天瓏資料不完整，缺少 {len(missing_ranks)} 筆（前幾筆：{preview}）；"
+            "保留 checkpoint，下次將繼續抓取。"
+        )
 
 if args.csv:
     f.close()
@@ -333,5 +408,9 @@ if args.xlsx:
         ts.tm_mon,
         ts.tm_mday
     )
-    wb.save(fname)
+    temporary_name = f".{fname}.tmp.xlsx"
+    wb.save(temporary_name)
     wb.close()
+    os.replace(temporary_name, fname)
+    if args.site == "tenlong":
+        checkpoint_path.unlink(missing_ok=True)

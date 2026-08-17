@@ -81,6 +81,8 @@ site    tenlong（天瓏）
 period  7 或 30
 ```
 
+天瓏請求預設間隔 3～5 秒。遇到 HTTP 429、5xx 或暫時性連線錯誤時，會遵守 `Retry-After` 或採指數退避重試。使用 `-x` 產生 Excel 時，每完成一本就保存當日 checkpoint；中途失敗後重新執行會自動續跑。確認 100 筆資料完整後才會原子產生正式 Excel，並刪除 checkpoint。
+
 ## 透過 Gmail 寄送 Excel
 
 將 `.env.example` 複製為 `.env`，填入 Gmail 帳號、Google 應用程式密碼與收件人：
@@ -115,7 +117,7 @@ uv run send_excel_email.py
 ./排行榜7.sh
 ```
 
-腳本會依序執行三個步驟；任一步失敗就會停止，不會寄出不完整的結果。
+腳本會先執行天瓏，再執行博客來。任一來源失敗時仍會完成另一來源的抓取，但不會寄出不完整的結果；兩者都成功才會寄信。
 
 ## 排行榜捷徑
 
@@ -156,4 +158,6 @@ Shell 腳本執行前會呼叫 `pre_process.sh` 檢查 uv 與 git；缺少工具
 
 ### 天瓏
 
-天瓏目前無反爬蟲機制，每次等待 0～1 秒（設定於 `sites/tenlong.py`）。
+`best_seller.py` 使用共用 HTTP Session，並將請求限制為每 3～5 秒一次，以避免觸發 HTTP 429。若仍被限流，最多重試 5 次，預設等待時間依序為 30、60、120、240、480 秒，伺服器提供 `Retry-After` 時則優先採用。
+
+Excel 模式的 checkpoint 檔名為 `.tenlong_{period}_YYYYMMDD.checkpoint.json`。checkpoint 只在完整產出 Excel 後刪除，因此網路中斷或網站暫時限流後可直接用相同指令續跑。
